@@ -1,0 +1,69 @@
+{
+  "date": "2026-08-14",
+  "cover_subtitle": "3 AI stories that matter today",
+  "intro_line": "Three AI stories worth knowing about today, in under a minute.",
+  "stories": [
+    {
+      "headline": "Z.ai unveils open coding model to rival Claude",
+      "teaser": "Z.ai: open Claude rival",
+      "bullets": [
+        "GLM-5.3 is built for coding, with weights due within two weeks.",
+        "Z.ai says it scores close to Claude Fable 5 on coding tasks.",
+        "A permissive licence could let teams self-host it far more cheaply."
+      ],
+      "source": "Bloomberg",
+      "company": "Z.ai",
+      "link": "https://www.bloomberg.com/news/articles/2026-08-14/z-ai-aims-to-catch-anthropic-openai-in-coding-with-new-ai-model",
+      "tier": 2,
+      "corroboration": 5,
+      "category": "model_release",
+      "original_title": "Z.ai to Rival Anthropic, OpenAI in Coding With New AI Model",
+      "summary": "Z.ai announced GLM-5.3, an upgraded coding-focused model built on the same roughly 700-billion-parameter base as GLM-5.2. Weights are due within two weeks under a permissive licence.",
+      "script_line": "Chinese lab Z.ai has unveiled GLM-5.3, a coding model it says performs close to Claude. The weights are due within two weeks under a permissive licence, so teams could self-host it cheaply.",
+      "why_it_matters": "Strong coding models may stop being something you can only rent from a US lab."
+    },
+    {
+      "headline": "OpenAI runs GPT-5.6 up to 14x faster",
+      "teaser": "OpenAI: 14x faster GPT-5.6",
+      "bullets": [
+        "Ultrafast mode reaches up to 750 output tokens per second.",
+        "It is an API preview for selected customers, widening as capacity grows."
+      ],
+      "source": "OpenAI",
+      "company": "OpenAI",
+      "link": "https://openai.com/index/previewing-ultrafast/",
+      "tier": 1,
+      "corroboration": 3,
+      "category": "product_launch",
+      "original_title": "Previewing Ultrafast mode: GPT-5.6 Sol at up to 14X the speed",
+      "summary": "OpenAI previewed Ultrafast mode for GPT-5.6 Sol, running up to 14 times faster and generating up to 750 output tokens per second. It launched in limited preview to a select group of API customers on 13 August 2026.",
+      "script_line": "OpenAI is previewing Ultrafast mode, running GPT-5.6 Sol up to fourteen times faster, at up to seven hundred and fifty tokens a second. It's a limited API preview for now.",
+      "why_it_matters": "AI assistants and voice agents can start to feel genuinely instant."
+    },
+    {
+      "headline": "UK courts ban Meta smart glasses",
+      "teaser": "Meta glasses: UK court ban",
+      "bullets": [
+        "Courts and tribunals across England and Wales barred the wearables.",
+        "The concern is that recording is hard for anyone nearby to notice.",
+        "Points to tighter rules ahead for AI wearables in public places."
+      ],
+      "source": "Engadget",
+      "company": "Meta",
+      "link": "https://www.engadget.com/2234606/england-and-wales-ban-meta-glasses-from-courtrooms/",
+      "tier": 2,
+      "corroboration": 5,
+      "category": "regulation",
+      "original_title": "England and Wales ban Meta Glasses from courtrooms",
+      "summary": "His Majesty's Courts & Tribunals Service has prohibited Meta smart glasses from courtrooms in England and Wales, citing the difficulty of detecting when the devices are recording.",
+      "script_line": "And in the UK, courts and tribunals in England and Wales have banned Meta's smart glasses, because it's hard to tell when they're recording.",
+      "why_it_matters": "Expect more venues to restrict AI wearables before the law catches up."
+    }
+  ],
+  "matters_professionals": "Faster inference and open coding models widen what you can ship this quarter.",
+  "matters_businesses": "Cheap self-hosted models and new wearable rules both land on this year's roadmap.",
+  "matters_learners": "Open-weight releases are the cheapest way to practise on frontier-class models.",
+  "caption": "Today's AI Brief — 14 Aug 2026\n\n• Z.ai unveils GLM-5.3, an open coding model it says rivals Claude\n• OpenAI previews Ultrafast mode, running GPT-5.6 up to 14x faster\n• UK courts ban Meta smart glasses over recording concerns\n\nWhich one matters most for your work?\n\nSources: Bloomberg, OpenAI, Engadget\n\n#AI #ArtificialIntelligence #TechNews #OpenAI #Meta #AIEngineering #MachineLearning #SoftwareEngineering #AINews #TechTales",
+  "yt_title": "AI News — Z.ai's Claude rival, OpenAI 14x faster, Meta glasses banned",
+  "yt_description": "Three AI stories that matter today, 14 August 2026.\n\nZ.ai unveils open coding model to rival Claude: https://www.bloomberg.com/news/articles/2026-08-14/z-ai-aims-to-catch-anthropic-openai-in-coding-with-new-ai-model\nOpenAI runs GPT-5.6 up to 14x faster: https://openai.com/index/previewing-ultrafast/\nUK courts ban Meta smart glasses: https://www.engadget.com/2234606/england-and-wales-ban-meta-glasses-from-courtrooms/\n\nTechTales Engineering — AI engineering made simple."
+}

@@ -1,0 +1,214 @@
+# TechTales Engineering - daily AI carousel.
+# Secrets live in env vars; everything visual and editorial lives here.
+
+brand:
+  name: "TechTales"                 # short form, used on slides
+  full_name: "TechTales Engineering"
+  # Matches the positioning already used on both channels ("AI Engineering
+  # Made Simple" on Instagram, "AI Engineering, Explained" on the YouTube
+  # banner). Keeps the carousel consistent with the rest of the brand.
+  tagline: "AI ENGINEERING MADE SIMPLE"
+  handle: "@techtalesengineering"
+  youtube: "@TechTalesEngineering"
+  # assets/logo.png is a vector reconstruction of the channel avatar. Replace
+  # it with the real export (square PNG, 512px+, transparent or dark bg) and
+  # every slide picks it up. If the file is missing, slides fall back to a
+  # clean text wordmark rather than breaking.
+  logo: "assets/logo.png"
+
+  # --- palette -----------------------------------------------------------
+  # Sampled from the TechTales avatar and channel banner: near-black navy
+  # base, violet gradient mark, lavender highlight. Dark base also makes
+  # official product screenshots and company logos pop.
+  # Swap these values and the entire carousel re-skins.
+  bg: "#080816"
+  bg_alt: "#12102E"
+  panel: "#191634"                  # image panel backdrop
+  accent: "#7C5CFF"                 # primary violet from the logo gradient
+  accent_2: "#C9B8FF"               # lavender highlight from the logo
+  text: "#FFFFFF"
+  text_dim: "#9AA0C0"
+
+  font: "Inter"
+  font_display: "Inter"             # set to e.g. "Space Grotesk" for headlines
+
+ingest:
+  lookback_hours: 30
+  max_items_per_source: 25
+  request_timeout_s: 20
+  topic_keywords:
+    - artificial intelligence
+    - machine learning
+    - neural network
+    - language model
+    - llm
+    - genai
+    - generative ai
+    - transformer
+    - diffusion model
+    - openai
+    - anthropic
+    - deepmind
+    - gemini
+    - claude
+    - chatgpt
+    - copilot
+    - llama
+    - mistral
+    - cohere
+    - hugging face
+    - inference
+    - fine-tune
+    - benchmark
+    - agentic
+    - ai agent
+    - ai chip
+    - ai regulation
+    - ai safety
+
+verify:
+  # Quality over quantity: exactly three stories carry the whole carousel.
+  target_story_count: 3
+  tier2_min_corroboration: 2
+  tier3_min_corroboration: 2
+  cluster_similarity: 0.55
+
+  # HARD REJECT. Applied to tier-2 and tier-3 only, because a company
+  # announcing its own product never writes "reportedly". Any story whose
+  # headline contains one of these is dropped outright, not merely downranked.
+  reject_terms:
+    - rumor
+    - rumour
+    - leak
+    - leaked
+    - allegedly
+    - sources say
+    - is said to
+    - reportedly
+    - according to people familiar
+    - insider claims
+
+  # Clickbait - dropped regardless of tier. A trusted brief does not do this.
+  clickbait_terms:
+    - you won't believe
+    - you wont believe
+    - shocking
+    - this changes everything
+    - here's why
+    - heres why
+    - the truth about
+    - what nobody tells you
+    - will blow your mind
+    - mind-blowing
+    - insane
+    - crazy
+    - game changer
+    - game-changer
+
+  # Soft signals - not fatal, but pushed down the ranking.
+  hedge_terms:
+    - could
+    - might
+    - may be
+    - potentially
+    - is expected to
+    - is testing
+    - plans to
+
+  # Editorial priority, exactly as briefed. Scores stack, so a model release
+  # that is also a product launch ranks above either alone.
+  category_boost:
+    model_release: 4.0
+    product_launch: 3.2
+    tool_release: 2.6
+    regulation: 2.2
+    business: 1.6
+    research: 1.0
+
+  # A trailing * means prefix match ("releas*" catches released / releases /
+  # releasing). Everything else matches as a whole word, so "act" finds
+  # "the AI Act" but not "impact" or "actually".
+  category_keywords:
+    model_release:
+      ["releas*", "unveil*", "new model", "model family", "debut*", "ships",
+       "generally available", "open weights", "open-weight*"]
+    product_launch:
+      ["launch*", "introduc*", "announc*", "rolls out", "rolling out",
+       "now available", "general availability", "brings", "adds", "expand*",
+       "integrat*"]
+    tool_release:
+      ["open source", "open-source", "sdk", "api", "toolkit", "librar*",
+       "developer preview", "extension", "plugin", "cli"]
+    regulation:
+      ["regulat*", "act", "law", "court", "lawsuit", "ruling", "ban",
+       "policy", "complian*", "antitrust", "investigat*", "fine", "ftc"]
+    business:
+      ["funding", "raises", "acquisi*", "acquire*", "partnership", "revenue",
+       "ipo", "valuation", "invest*", "hires"]
+    research:
+      ["paper", "study", "benchmark*", "researchers", "we present",
+       "we introduce", "evaluation", "arxiv"]
+
+images:
+  enabled: true
+  # "hybrid"   try official article image, then company logo, then a generated
+  #            branded panel. Always produces a slide.
+  # "official" official article images only; a story without one is skipped.
+  # "logo"     always the company logo on a branded panel.
+  mode: "hybrid"
+  min_width: 500
+  min_height: 300
+  request_timeout_s: 20
+  # Images narrower or wider than these ratios are rejected as banners/pixels.
+  min_aspect: 0.4
+  max_aspect: 3.2
+  # Blurred backdrop behind contained images so any aspect ratio fills the
+  # panel cleanly instead of being hard-cropped.
+  backdrop_blur: 28
+  backdrop_darken: 0.45
+  # Fill the panel edge to edge when doing so costs less than this fraction of
+  # the image; beyond it, letterbox instead of cutting the subject in half.
+  max_crop_loss: 0.25
+  # Many sites serve one house share-card for every article. It is a valid
+  # og:image but shows nothing about the story, so prefer the company logo.
+  reject_generic_cards: true
+
+summarize:
+  model: "claude-sonnet-4-6"
+  max_headline_words: 8
+  max_bullets: 3
+  max_bullet_chars: 88
+  script_target_words: 110
+
+carousel:
+  width: 1080
+  height: 1350                 # 4:5, the tallest ratio Instagram allows
+  # Image occupies this fraction of the slide height on story slides.
+  # 0.60 is the sweet spot, checked by rendering 0.70 / 0.60 / 0.50 against a
+  # realistic three-bullet story:
+  #   0.70 - headline crowds the footer once it wraps to three lines
+  #   0.60 - image still dominates, copy sits comfortably
+  #   0.50 - worse on BOTH counts: the shorter panel is wider, so images get
+  #          letterboxed more often, and the copy no longer fills the space
+  image_ratio: 0.60
+
+video:
+  enabled: true                # set false if you only want the carousel
+  width: 1080
+  height: 1920
+  fps: 30
+  max_duration_s: 58
+  tts_engine: "edge"
+  tts_voice: "en-US-AriaNeural"    # try en-IN-NeerjaNeural for an Indian accent
+  tts_rate: "+8%"
+  music: null
+
+publish:
+  instagram:
+    enabled: true
+    post_carousel: true
+    post_reel: false           # carousel is the priority format
+  youtube:
+    enabled: true
+    privacy: "public"
+    category_id: "28"

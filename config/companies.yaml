@@ -1,0 +1,113 @@
+# Company recognition, used to pick imagery that matches the STORY rather than
+# the publisher. Without this, a TechCrunch article about Nvidia falls back to
+# the TechCrunch logo - correct attribution, wrong picture.
+#
+# Aliases are matched as whole words against the headline and summary, longest
+# alias first, so "Google DeepMind" wins over "Google".
+
+companies:
+  - name: OpenAI
+    domain: openai.com
+    aliases: [OpenAI, ChatGPT, GPT-4, GPT-5, Sora, DALL-E, Codex]
+  - name: Anthropic
+    domain: anthropic.com
+    aliases: [Anthropic, Claude]
+  - name: Google DeepMind
+    domain: deepmind.google
+    aliases: [Google DeepMind, DeepMind, Gemini, AlphaFold, Veo, Imagen]
+  - name: Google
+    domain: google.com
+    aliases: [Google, Workspace, Vertex AI, Google Cloud]
+  - name: Microsoft
+    domain: microsoft.com
+    aliases: [Microsoft, Copilot, Azure AI, Azure OpenAI]
+  - name: NVIDIA
+    domain: nvidia.com
+    aliases: [NVIDIA, Nvidia, Blackwell, Hopper, CUDA, GeForce, DGX]
+  - name: Meta
+    domain: meta.com
+    aliases: [Meta AI, Meta, Llama, LLaMA]
+  - name: Hugging Face
+    domain: huggingface.co
+    aliases: [Hugging Face, HuggingFace, Transformers library]
+  - name: Mistral AI
+    domain: mistral.ai
+    aliases: [Mistral AI, Mistral, Mixtral]
+  - name: Cohere
+    domain: cohere.com
+    aliases: [Cohere, Command R]
+  - name: Amazon
+    domain: aboutamazon.com
+    aliases: [AWS, Amazon Web Services, Amazon, Bedrock, SageMaker, Trainium]
+  - name: Apple
+    domain: apple.com
+    aliases: [Apple, Apple Intelligence, Siri]
+  - name: xAI
+    domain: x.ai
+    aliases: [xAI, Grok]
+  - name: Perplexity
+    domain: perplexity.ai
+    aliases: [Perplexity]
+  - name: Stability AI
+    domain: stability.ai
+    aliases: [Stability AI, Stable Diffusion]
+  - name: IBM
+    domain: ibm.com
+    aliases: [IBM, watsonx, Granite]
+  - name: AMD
+    domain: amd.com
+    aliases: [AMD, Instinct, ROCm]
+  - name: Intel
+    domain: intel.com
+    aliases: [Intel, Gaudi]
+  - name: Qualcomm
+    domain: qualcomm.com
+    aliases: [Qualcomm, Snapdragon]
+  - name: Databricks
+    domain: databricks.com
+    aliases: [Databricks, MosaicML, DBRX]
+  - name: Salesforce
+    domain: salesforce.com
+    aliases: [Salesforce, Einstein, Agentforce]
+  - name: Adobe
+    domain: adobe.com
+    aliases: [Adobe, Firefly]
+  - name: ElevenLabs
+    domain: elevenlabs.io
+    aliases: [ElevenLabs]
+  - name: Runway
+    domain: runwayml.com
+    aliases: [Runway, Gen-3]
+  - name: Midjourney
+    domain: midjourney.com
+    aliases: [Midjourney]
+  - name: Groq
+    domain: groq.com
+    aliases: [Groq]
+  - name: Scale AI
+    domain: scale.com
+    aliases: [Scale AI]
+  - name: LangChain
+    domain: langchain.com
+    aliases: [LangChain, LangGraph, LangSmith]
+  - name: Z.ai
+    domain: z.ai
+    aliases: [Z.ai, Zhipu, GLM-5, GLM-5.2, GLM-5.3, ChatGLM]
+  - name: Moonshot AI
+    domain: moonshot.ai
+    aliases: [Moonshot AI, Kimi]
+  - name: DeepSeek
+    domain: deepseek.com
+    aliases: [DeepSeek]
+  - name: Alibaba
+    domain: alibabagroup.com
+    aliases: [Alibaba, Qwen, Tongyi]
+  - name: Cerebras
+    domain: cerebras.ai
+    aliases: [Cerebras]
+  - name: CoreWeave
+    domain: coreweave.com
+    aliases: [CoreWeave]
+  - name: European Commission
+    domain: digital-strategy.ec.europa.eu
+    aliases: [European AI Office, European Commission, EU AI Act, AI Act]

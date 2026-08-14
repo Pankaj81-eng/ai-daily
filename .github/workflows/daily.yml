@@ -1,0 +1,96 @@
+name: AI Daily
+
+on:
+  schedule:
+    # 06:15 UTC. GitHub's scheduler drifts under load, so treat this as
+    # "shortly after 06:15", not a hard guarantee.
+    - cron: "15 6 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build only, publish nothing"
+        type: boolean
+        default: false
+      no_approval:
+        description: "Skip the Telegram approval gate"
+        type: boolean
+        default: false
+
+# Never let two editions build at once.
+concurrency:
+  group: ai-daily
+  cancel-in-progress: false
+
+permissions:
+  contents: write        # needed to commit state/seen.json and upload release assets
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Generous: most of it is the human approval window.
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak-ng
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Build and publish
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # github_release hosting uses these two automatically.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ASSET_HOST: github_release
+        run: |
+          python -m aidaily.cli run \
+            ${{ inputs.dry_run && '--dry-run' || '' }} \
+            ${{ inputs.no_approval && '--no-approval' || '' }} \
+            --approval-timeout 2700
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edition-${{ github.run_id }}
+          path: |
+            out/**/*.png
+            out/**/*.mp4
+            out/**/edition.json
+            out/**/results.json
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Remember what we posted
+        if: success()
+        run: |
+          if [[ -n "$(git status --porcelain state/)" ]]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add state/
+            git commit -m "chore: update seen store [skip ci]"
+            git push
+          else
+            echo "No state change to commit."
+          fi

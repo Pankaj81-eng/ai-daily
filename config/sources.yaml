@@ -1,0 +1,115 @@
+# Source allowlist for the AI Daily pipeline.
+#
+# tier 1 = PRIMARY. The organisation speaking about itself, a regulator, or a
+#          peer-reviewed/preprint venue. Trusted on its own.
+# tier 2 = ESTABLISHED PRESS. Real newsrooms with corrections policies.
+#          Needs either a tier-1 link in the article or a second tier-2 report.
+# tier 3 = SIGNAL ONLY. Useful for spotting a story early, never publishable
+#          alone. Requires two independent corroborations.
+#
+# Nothing outside this file can ever reach a post. Add sources deliberately.
+
+sources:
+  # ---------------- Tier 1: official lab & vendor announcements -------------
+  - name: OpenAI Blog
+    url: https://openai.com/blog/rss.xml
+    tier: 1
+    tags: [lab]
+  - name: Anthropic News
+    url: https://www.anthropic.com/news/rss.xml
+    tier: 1
+    tags: [lab]
+  - name: Google DeepMind Blog
+    url: https://deepmind.google/blog/rss.xml
+    tier: 1
+    tags: [lab]
+  - name: Google Research Blog
+    url: https://research.google/blog/rss/
+    tier: 1
+    tags: [lab]
+  - name: Meta AI Blog
+    url: https://ai.meta.com/blog/rss/
+    tier: 1
+    tags: [lab]
+  - name: Microsoft Research Blog
+    url: https://www.microsoft.com/en-us/research/feed/
+    tier: 1
+    tags: [lab]
+  - name: Microsoft AI Blog
+    url: https://blogs.microsoft.com/ai/feed/
+    tier: 1
+    tags: [lab]
+  - name: Cohere Blog
+    url: https://cohere.com/blog/rss.xml
+    tier: 1
+    tags: [lab]
+  - name: NVIDIA Blog
+    url: https://blogs.nvidia.com/feed/
+    tier: 1
+    tags: [hardware]
+  - name: Hugging Face Blog
+    url: https://huggingface.co/blog/feed.xml
+    tier: 1
+    tags: [openweights]
+  - name: Mistral AI News
+    url: https://mistral.ai/news/feed.xml
+    tier: 1
+    tags: [lab]
+  - name: AWS Machine Learning Blog
+    url: https://aws.amazon.com/blogs/machine-learning/feed/
+    tier: 1
+    tags: [cloud]
+
+  # ---------------- Tier 1: research preprints ------------------------------
+  - name: arXiv cs.AI
+    url: http://export.arxiv.org/rss/cs.AI
+    tier: 1
+    tags: [research]
+  - name: arXiv cs.LG
+    url: http://export.arxiv.org/rss/cs.LG
+    tier: 1
+    tags: [research]
+  - name: arXiv cs.CL
+    url: http://export.arxiv.org/rss/cs.CL
+    tier: 1
+    tags: [research]
+
+  # ---------------- Tier 2: established technology press --------------------
+  - name: TechCrunch AI
+    url: https://techcrunch.com/category/artificial-intelligence/feed/
+    tier: 2
+    tags: [press]
+  - name: The Verge AI
+    url: https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+    tier: 2
+    tags: [press]
+  - name: Ars Technica AI
+    url: https://arstechnica.com/ai/feed/
+    tier: 2
+    tags: [press]
+  - name: VentureBeat AI
+    url: https://venturebeat.com/category/ai/feed/
+    tier: 2
+    tags: [press]
+  - name: MIT Technology Review
+    url: https://www.technologyreview.com/feed/
+    tier: 2
+    tags: [press]
+  - name: IEEE Spectrum AI
+    url: https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss
+    tier: 2
+    tags: [press]
+  - name: Wired AI
+    url: https://www.wired.com/feed/tag/ai/latest/rss
+    tier: 2
+    tags: [press]
+  - name: Reuters Technology
+    url: https://www.reutersagency.com/feed/?best-topics=tech
+    tier: 2
+    tags: [wire]
+
+  # ---------------- Tier 3: signal only, never publishable alone ------------
+  - name: Hacker News (AI front page)
+    url: https://hnrss.org/frontpage?q=AI+OR+LLM+OR+OpenAI+OR+Anthropic
+    tier: 3
+    tags: [aggregator]

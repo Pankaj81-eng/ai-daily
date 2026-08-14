@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <defs>
+    <linearGradient id="tt" x1="180" y1="170" x2="620" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0"    stop-color="#DCCFFF"/>
+      <stop offset="0.35" stop-color="#9B7BFF"/>
+      <stop offset="0.72" stop-color="#6B49F5"/>
+      <stop offset="1"    stop-color="#5432E0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.62">
+      <stop offset="0"   stop-color="#2A1E63" stop-opacity="0.85"/>
+      <stop offset="1"   stop-color="#0A0A18" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="800" height="800" rx="0" fill="#0B0B1A"/>
+  <rect width="800" height="800" fill="url(#glow)"/>
+
+  <g fill="url(#tt)">
+    <!-- upper T: crossbar + stem -->
+    <rect x="184" y="181" width="300" height="96"  rx="26"/>
+    <rect x="287" y="258" width="97"  height="226" rx="26"/>
+    <!-- lower, inverted T: stem + crossbar -->
+    <rect x="419" y="314" width="97"  height="226" rx="26"/>
+    <rect x="317" y="521" width="300" height="96"  rx="26"/>
+  </g>
+</svg>

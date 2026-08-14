@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: {{ w }}px; height: {{ h }}px; overflow: hidden;
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: {{ c.bg }}; color: {{ c.text }};
+  }
+  .stage {
+    position: relative; width: {{ w }}px; height: {{ h }}px;
+    /* Reels and Shorts overlay their own UI (caption, buttons, progress) over
+       roughly the bottom 340px and the top 120px. Everything that must stay
+       readable lives inside this padding. */
+    padding: 190px 84px 360px;
+    display: flex; flex-direction: column;
+    background:
+      radial-gradient(1000px 760px at 84% 4%,  {{ c.accent }}33, transparent 60%),
+      radial-gradient(880px 700px at -14% 96%, {{ c.accent_2 }}2B, transparent 62%),
+      linear-gradient(170deg, {{ c.bg }} 0%, {{ c.bg_alt }} 100%);
+  }
+  .stage::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient({{ c.text }}07 1px, transparent 1px),
+      linear-gradient(90deg, {{ c.text }}07 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at 50% 42%, #000 28%, transparent 76%);
+  }
+
+  .top { display: flex; align-items: center; gap: 18px; }
+  .dot {
+    width: 17px; height: 17px; border-radius: 50%; background: {{ c.accent }};
+    box-shadow: 0 0 0 7px {{ c.accent }}22, 0 0 30px {{ c.accent }};
+  }
+  .brandname {
+    font-size: 29px; font-weight: 700; letter-spacing: .18em;
+    text-transform: uppercase; color: {{ c.text_dim }};
+  }
+
+  .mid { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+  {% if kind == 'cover' %}
+  .kicker {
+    font-size: 32px; font-weight: 700; letter-spacing: .22em;
+    text-transform: uppercase; color: {{ c.accent }}; margin-bottom: 38px;
+  }
+  .title {
+    font-size: 128px; font-weight: 900; line-height: 1.0; letter-spacing: -.04em;
+    background: linear-gradient(102deg, {{ c.text }} 10%, {{ c.accent }} 95%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .sub { margin-top: 42px; font-size: 46px; color: {{ c.text_dim }}; line-height: 1.35; }
+  {% else %}
+  .num {
+    display: inline-block; align-self: flex-start;
+    font-size: 30px; font-weight: 800; letter-spacing: .12em;
+    color: {{ c.accent }}; background: {{ c.accent }}1E;
+    padding: 12px 24px; border-radius: 11px; margin-bottom: 40px;
+  }
+  .title {
+    font-size: 86px; font-weight: 800; line-height: 1.09;
+    letter-spacing: -.03em; margin-bottom: 42px;
+  }
+  .sub { font-size: 46px; color: {{ c.text }}C4; line-height: 1.42; }
+  {% endif %}
+
+  .bottom {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .src { font-size: 27px; color: {{ c.text_dim }}; font-weight: 600; }
+  .handle { font-size: 27px; font-weight: 800; color: {{ c.accent }}; }
+
+  /* progress bar across the short */
+  .prog {
+    margin-bottom: 26px;
+    height: 6px; border-radius: 3px; background: {{ c.text }}1A;
+  }
+  .prog i {
+    display: block; height: 100%; border-radius: 3px; width: {{ progress }}%;
+    background: linear-gradient(90deg, {{ c.accent }}, {{ c.accent_2 }});
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="top"><div class="dot"></div><div class="brandname">{{ brand_name }}</div></div>
+
+  <div class="mid">
+  {% if kind == 'cover' %}
+    <div class="kicker">{{ date_label }}</div>
+    <div class="title">{{ title }}</div>
+    <div class="sub">{{ subtitle }}</div>
+  {% else %}
+    <div class="num">STORY {{ index }}</div>
+    <div class="title">{{ title }}</div>
+    <div class="sub">{{ subtitle }}</div>
+  {% endif %}
+  </div>
+
+  <div class="prog"><i></i></div>
+  <div class="bottom">
+    <div class="src">{{ sources }}</div>
+    <div class="handle">{{ handle }}</div>
+  </div>
+</div>
+</body>
+</html>

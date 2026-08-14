@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* Auto-fit scale. render_carousel.py steps this down until the story copy
+     fits its fixed area, so adding "why it matters" can never push content
+     under the footer regardless of how long a headline runs. */
+  :root { --fit: 1; }
+
+  html, body {
+    width: {{ w }}px; height: {{ h }}px; overflow: hidden;
+    font-family: '{{ c.font }}', -apple-system, 'Segoe UI', sans-serif;
+    background: {{ c.bg }}; color: {{ c.text }};
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .stage {
+    position: relative; width: {{ w }}px; height: {{ h }}px;
+    display: flex; flex-direction: column;
+    background:
+      radial-gradient(880px 620px at 84% -10%, {{ c.accent }}2B, transparent 62%),
+      radial-gradient(760px 600px at -12% 106%, {{ c.accent_2 }}1C, transparent 64%),
+      linear-gradient(168deg, {{ c.bg }} 0%, {{ c.bg_alt }} 100%);
+  }
+  .grid {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient({{ c.text }}05 1px, transparent 1px),
+      linear-gradient(90deg, {{ c.text }}05 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse at 50% 40%, #000 28%, transparent 80%);
+  }
+
+  /* ================= shared brand bar ================= */
+  .bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 42px 60px 0; flex: 0 0 auto; z-index: 3;
+  }
+  .brand { display: flex; align-items: center; gap: 15px; }
+  .brand img { width: 52px; height: 52px; border-radius: 13px; display: block; }
+  .mark {
+    width: 52px; height: 52px; border-radius: 13px;
+    background: linear-gradient(140deg, {{ c.accent_2 }}, {{ c.accent }});
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 26px; color: #0B0B1A; letter-spacing: -.04em;
+  }
+  .bname {
+    font-size: 25px; font-weight: 800; letter-spacing: -.01em; line-height: 1.1;
+  }
+  .btag {
+    font-size: 14px; font-weight: 700; letter-spacing: .17em;
+    color: {{ c.text_dim }}; text-transform: uppercase; margin-top: 3px;
+  }
+  .date { font-size: 21px; font-weight: 600; color: {{ c.text_dim }}; }
+
+  /* ================= cover ================= */
+  .cover-body {
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    padding: 0 60px; z-index: 2;
+  }
+  .eyebrow {
+    display: inline-flex; align-self: flex-start; align-items: center; gap: 12px;
+    font-size: 21px; font-weight: 800; letter-spacing: .18em;
+    text-transform: uppercase; color: {{ c.accent_2 }};
+    background: {{ c.accent }}1E; border: 1px solid {{ c.accent }}38;
+    padding: 12px 22px; border-radius: 999px; margin-bottom: 40px;
+  }
+  .cover-title {
+    font-size: 136px; font-weight: 900; line-height: .96; letter-spacing: -.045em;
+    background: linear-gradient(102deg, #FFFFFF 20%, {{ c.accent_2 }} 68%, {{ c.accent }} 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .cover-sub {
+    margin-top: 30px; font-size: 44px; font-weight: 600;
+    color: {{ c.text }}D0; line-height: 1.28;
+  }
+  .rule {
+    width: 132px; height: 7px; border-radius: 4px; margin: 46px 0 40px;
+    background: linear-gradient(90deg, {{ c.accent_2 }}, {{ c.accent }});
+  }
+  /* Cover teasers: a hook per story, not a table of contents. Bigger and
+     fewer words than the headline, so the cover sells the swipe. */
+  .toc { display: flex; flex-direction: column; gap: 22px; }
+  .toc-row { display: flex; gap: 22px; align-items: center; }
+  .toc-n {
+    flex: 0 0 auto; font-size: 20px; font-weight: 800; color: {{ c.accent_2 }};
+    background: {{ c.accent }}1C; border: 1px solid {{ c.accent }}30;
+    border-radius: 10px; padding: 8px 13px; line-height: 1;
+  }
+  .toc-t {
+    font-size: 38px; font-weight: 700; color: {{ c.text }}EE;
+    line-height: 1.2; letter-spacing: -.02em;
+  }
+
+  /* ================= story ================= */
+  .photo {
+    position: relative; width: {{ w }}px; height: {{ img_h }}px;
+    flex: 0 0 auto; overflow: hidden; background: {{ c.panel }};
+  }
+  .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* fades the image into the copy below so there is no hard seam */
+  .photo::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 132px;
+    background: linear-gradient(to bottom, transparent, {{ c.bg }}D9 62%, {{ c.bg }});
+  }
+  .genpanel {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 26px;
+    background:
+      radial-gradient(620px 420px at 50% 34%, {{ c.accent }}42, transparent 68%),
+      linear-gradient(150deg, {{ c.panel }}, {{ c.bg_alt }});
+  }
+  .genpanel .gname {
+    font-size: 70px; font-weight: 900; letter-spacing: -.035em;
+    color: {{ c.text }}; text-align: center; max-width: 80%; line-height: 1.06;
+  }
+  .genpanel .gcat {
+    font-size: 20px; font-weight: 800; letter-spacing: .2em;
+    text-transform: uppercase; color: {{ c.accent_2 }};
+  }
+  .badge {
+    position: absolute; left: 44px; top: 34px; z-index: 4;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 20px; border-radius: 999px;
+    background: {{ c.bg }}D9; border: 1px solid {{ c.text }}22;
+    backdrop-filter: blur(14px);
+    font-size: 19px; font-weight: 700; color: {{ c.text }}E8;
+  }
+  .badge i {
+    width: 9px; height: 9px; border-radius: 50%; background: {{ c.accent_2 }};
+    box-shadow: 0 0 12px {{ c.accent_2 }};
+  }
+  /* TechTales mark over the image, so every slide is recognisable at a glance
+     even when it is re-shared as a single screenshot. */
+  .stamp {
+    position: absolute; right: 40px; top: 30px; z-index: 4;
+    display: flex; align-items: center; gap: 11px;
+    padding: 9px 18px 9px 10px; border-radius: 999px;
+    background: {{ c.bg }}D9; border: 1px solid {{ c.text }}22;
+    backdrop-filter: blur(14px);
+  }
+  .stamp img { width: 34px; height: 34px; border-radius: 9px; display: block; }
+  .stamp .mark { width: 34px; height: 34px; border-radius: 9px; font-size: 17px; }
+  .stamp span {
+    font-size: 19px; font-weight: 800; color: {{ c.text }}E8; letter-spacing: -.01em;
+  }
+
+  .copy {
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    padding: 0 60px 8px; z-index: 2; min-height: 0; overflow: hidden;
+  }
+  .copy-inner { display: flex; flex-direction: column; }
+  .headline {
+    font-size: calc({{ headline_size }}px * var(--fit));
+    font-weight: 800; line-height: 1.09;
+    letter-spacing: -.03em; margin-bottom: calc(24px * var(--fit));
+  }
+  .bullets {
+    display: flex; flex-direction: column; gap: calc(13px * var(--fit));
+  }
+  .bullet { display: flex; gap: 15px; align-items: flex-start; }
+  .bullet span:first-child {
+    flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%;
+    background: {{ c.accent }}; margin-top: calc(11px * var(--fit));
+  }
+  .bullet span:last-child {
+    font-size: calc({{ bullet_size }}px * var(--fit));
+    font-weight: 450; line-height: 1.34;
+    color: {{ c.text }}C4;
+  }
+
+  /* Why it matters - the takeaway, visually distinct from the facts above
+     but deliberately compact so the image area stays the same size. */
+  .why {
+    margin-top: calc(22px * var(--fit));
+    padding: calc(16px * var(--fit)) calc(22px * var(--fit));
+    border-left: 4px solid {{ c.accent }};
+    background: linear-gradient(96deg, {{ c.accent }}1C, {{ c.accent }}08);
+    border-radius: 0 12px 12px 0;
+  }
+  .why-l {
+    font-size: calc(17px * var(--fit)); font-weight: 800;
+    letter-spacing: .15em; text-transform: uppercase;
+    color: {{ c.accent_2 }}; margin-bottom: calc(7px * var(--fit));
+  }
+  .why-t {
+    font-size: calc({{ why_size }}px * var(--fit)); font-weight: 600;
+    line-height: 1.3; color: {{ c.text }}F0;
+  }
+
+  /* ================= why it matters ================= */
+  .wim { flex: 1; display: flex; flex-direction: column; justify-content: center;
+         padding: 0 60px; z-index: 2; }
+  .wim-title {
+    font-size: 76px; font-weight: 900; line-height: 1.04;
+    letter-spacing: -.035em; margin-bottom: 44px;
+  }
+  .wim-title em {
+    font-style: normal;
+    background: linear-gradient(96deg, {{ c.accent_2 }}, {{ c.accent }});
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .card {
+    padding: 30px 32px; margin-bottom: 20px; border-radius: 18px;
+    background: linear-gradient(120deg, {{ c.text }}0B, {{ c.text }}05);
+    border: 1px solid {{ c.text }}16; border-left: 5px solid {{ c.accent }};
+  }
+  .card-l {
+    font-size: 19px; font-weight: 800; letter-spacing: .16em;
+    text-transform: uppercase; color: {{ c.accent_2 }}; margin-bottom: 12px;
+  }
+  .card-t { font-size: 33px; font-weight: 500; line-height: 1.32; }
+
+  /* ================= follow ================= */
+  .follow {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 0 70px; z-index: 2;
+  }
+  .follow img.big { width: 168px; height: 168px; border-radius: 40px; margin-bottom: 40px; }
+  .follow .mark.big {
+    width: 168px; height: 168px; border-radius: 40px; font-size: 82px;
+    margin-bottom: 40px;
+  }
+  .follow-t {
+    font-size: 82px; font-weight: 900; line-height: 1.04;
+    letter-spacing: -.038em; margin-bottom: 24px;
+  }
+  .follow-t em {
+    font-style: normal;
+    background: linear-gradient(96deg, {{ c.accent_2 }}, {{ c.accent }});
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .follow-s { font-size: 37px; color: {{ c.text_dim }}; line-height: 1.34; }
+  .cta {
+    margin-top: 48px; padding: 26px 54px; border-radius: 999px;
+    background: linear-gradient(96deg, {{ c.accent_2 }}, {{ c.accent }});
+    font-size: 36px; font-weight: 800; color: #0B0B1A;
+  }
+  .handles {
+    margin-top: 40px; font-size: 26px; font-weight: 600; color: {{ c.text_dim }};
+    line-height: 1.6;
+  }
+
+  /* ================= footer ================= */
+  .foot {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+    margin: 0 60px; padding: 22px 0 34px;
+    border-top: 1px solid {{ c.text }}14; z-index: 2;
+  }
+  .src { font-size: 21px; color: {{ c.text_dim }}; font-weight: 500; }
+  .src b { color: {{ c.text }}C0; font-weight: 700; }
+  .pg { font-size: 21px; font-weight: 700; color: {{ c.text_dim }}; }
+  /* Story position, so the swipe still has a sense of progress after the
+     "Story n of 3" counter made way for the handle. */
+  .dots { display: flex; gap: 9px; align-items: center; }
+  .dots i {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: {{ c.text }}2E; display: block;
+  }
+  .dots i.on {
+    background: {{ c.accent_2 }}; box-shadow: 0 0 10px {{ c.accent_2 }}AA;
+  }
+  .swipe { font-size: 23px; font-weight: 800; color: {{ c.accent_2 }}; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="grid"></div>
+
+  {% macro brandbar(show_date=true) %}
+  <div class="bar">
+    <div class="brand">
+      {% if logo_uri %}<img src="{{ logo_uri }}" alt="">{% else %}<div class="mark">TT</div>{% endif %}
+      <div>
+        <div class="bname">{{ brand_name }}</div>
+        <div class="btag">{{ tagline }}</div>
+      </div>
+    </div>
+    {% if show_date %}<div class="date">{{ date_label }}</div>{% endif %}
+  </div>
+  {% endmacro %}
+
+  {# ---------------- COVER ---------------- #}
+  {% if kind == 'cover' %}
+    {{ brandbar() }}
+    <div class="cover-body">
+      <div class="eyebrow">Daily AI Brief</div>
+      <div class="cover-title">Today<br>in AI</div>
+      <div class="cover-sub">{{ subtitle }}</div>
+      <div class="rule"></div>
+      <div class="toc">
+        {% for t in toc %}
+        <div class="toc-row">
+          <div class="toc-n">0{{ loop.index }}</div>
+          <div class="toc-t">{{ t }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="foot">
+      <div class="src">{{ handle }}</div>
+      <div class="swipe">Swipe &rarr;</div>
+    </div>
+
+
+  {# ---------------- STORY ---------------- #}
+  {% elif kind == 'story' %}
+    <div class="photo">
+      <div class="badge"><i></i>{{ source }}</div>
+      <div class="stamp">
+        {% if logo_uri %}<img src="{{ logo_uri }}" alt="">{% else %}<div class="mark">TT</div>{% endif %}
+        <span>{{ brand_name }}</span>
+      </div>
+      {% if image_uri %}
+        <img src="{{ image_uri }}" alt="">
+      {% else %}
+        <div class="genpanel">
+          <div class="gcat">{{ category_label }}</div>
+          <div class="gname">{{ subject }}</div>
+        </div>
+      {% endif %}
+    </div>
+    <div class="copy">
+      <div class="copy-inner">
+        <div class="headline">{{ title }}</div>
+        <div class="bullets">
+          {% for b in bullets %}
+          <div class="bullet"><span></span><span>{{ b }}</span></div>
+          {% endfor %}
+        </div>
+        {% if why %}
+        <div class="why">
+          <div class="why-l">Why it matters</div>
+          <div class="why-t">{{ why }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="foot">
+      <div class="src"><b>Source:</b> {{ source }}</div>
+      <div class="dots">
+        {% for i in range(story_total) %}
+        <i class="{{ 'on' if i == index - 1 else '' }}"></i>
+        {% endfor %}
+      </div>
+      <div class="pg">{{ handle }}</div>
+    </div>
+
+  {# ---------------- WHY IT MATTERS ---------------- #}
+  {% elif kind == 'matters' %}
+    {{ brandbar() }}
+    <div class="wim">
+      <div class="wim-title">Why today's<br>news <em>matters</em></div>
+      <div class="card">
+        <div class="card-l">If you build software</div>
+        <div class="card-t">{{ professionals }}</div>
+      </div>
+      <div class="card">
+        <div class="card-l">If you run a business</div>
+        <div class="card-t">{{ businesses }}</div>
+      </div>
+      <div class="card">
+        <div class="card-l">If you're learning AI</div>
+        <div class="card-t">{{ learners }}</div>
+      </div>
+    </div>
+    <div class="foot">
+      <div class="src">Every story links to its primary source</div>
+      <div class="pg">{{ handle }}</div>
+    </div>
+
+  {# ---------------- FOLLOW ---------------- #}
+  {% else %}
+    {{ brandbar(false) }}
+    <div class="follow">
+      {% if logo_uri %}<img class="big" src="{{ logo_uri }}" alt="">{% else %}<div class="mark big">TT</div>{% endif %}
+      <div class="follow-t">Follow <em>{{ brand_name }}</em><br>for daily AI updates</div>
+      <div class="follow-s">Trusted AI updates in under 20 seconds.</div>
+      <div class="cta">{{ handle }}</div>
+      <div class="handles">YouTube {{ youtube }}</div>
+    </div>
+    <div class="foot">
+      <div class="src">New AI brief every morning</div>
+      <div class="pg">{{ handle }}</div>
+    </div>
+  {% endif %}
+
+</div>
+</body>
+</html>
