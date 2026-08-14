@@ -4,7 +4,7 @@ on:
   schedule:
     # 06:15 UTC. GitHub's scheduler drifts under load, so treat this as
     # "shortly after 06:15", not a hard guarantee.
-    - cron: "15 6 * * *"
+    - cron: "0 8 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -67,7 +67,7 @@ jobs:
           python -m aidaily.cli run \
             ${{ inputs.dry_run && '--dry-run' || '' }} \
             ${{ inputs.no_approval && '--no-approval' || '' }} \
-            --approval-timeout 2700
+            --approval-timeout 7200
 
       - name: Upload build artifacts
         if: always()
