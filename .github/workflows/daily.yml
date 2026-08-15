@@ -4,7 +4,7 @@ on:
   schedule:
     # 06:15 UTC. GitHub's scheduler drifts under load, so treat this as
     # "shortly after 06:15", not a hard guarantee.
-    - cron: "0 8 * * *"
+    - cron: "16 9 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
