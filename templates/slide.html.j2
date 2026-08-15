@@ -56,6 +56,10 @@
     color: {{ c.text_dim }}; text-transform: uppercase; margin-top: 3px;
   }
   .date { font-size: 21px; font-weight: 600; color: {{ c.text_dim }}; }
+  .date-hero {
+    font-size: 30px; font-weight: 800; letter-spacing: .04em;
+    color: {{ c.accent_2 }}; margin-bottom: 18px;
+  }
 
   /* ================= cover ================= */
   .cover-body {
@@ -288,11 +292,11 @@
 
   {# ---------------- COVER ---------------- #}
   {% if kind == 'cover' %}
-    {{ brandbar() }}
+    {{ brandbar(show_date=false) }}
     <div class="cover-body">
       <div class="eyebrow">Daily AI Brief</div>
+      <div class="date-hero">{{ date_label }}</div>
       <div class="cover-title">Today<br>in AI</div>
-      <div class="cover-sub">{{ subtitle }}</div>
       <div class="rule"></div>
       <div class="toc">
         {% for t in toc %}
