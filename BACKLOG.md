@@ -64,6 +64,16 @@ the line) once it's actually fixed and committed.
 - **GH_TOKEN (fine-grained, `ai-daily-publish-v3`) expires 13 Nov 2026.**
   Regenerate with the same Contents + Actions permissions before then.
 
+## Pending — not started
+
+- **YouTube publishing isn't set up yet.** Only Instagram is live right
+  now. `publish_youtube.py` and the OAuth flow already exist in the repo
+  (see `SETUP.md` §8) but need onboarding: a Google Cloud project, OAuth
+  client, refresh token, and be aware new/unaudited projects get uploads
+  forced to `private` until Google approves an API compliance audit
+  (can take a few weeks). When ready to pick this up, that's the starting
+  point.
+
 ## Design / polish (low priority)
 
 - Cover slide date visibility — **done**, fixed 15 Aug 2026 (moved from
