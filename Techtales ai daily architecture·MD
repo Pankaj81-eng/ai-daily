@@ -1,0 +1,218 @@
+TechTales AI Daily — End-to-End Architecture
+
+A reference document explaining how the automated AI news pipeline works, from the original idea through every tool and file that makes it run. Written 15 Aug 2026.
+
+1. The idea
+
+The goal was a fully automated, trustworthy daily AI news briefing, published as an Instagram carousel (and short video) every morning with zero manual writing — but with a human still in control of what actually goes live. Three requirements shaped everything that follows:
+
+Verified, not vibes. No single blog post should be able to appear just because it sounds exciting. Stories need corroboration across sources, and hype/clickbait language gets rejected outright.
+Plain language. Press-release and academic phrasing gets rewritten into something a non-technical reader can understand in one scroll.
+A human always approves before anything goes public. No matter how good the automation gets, nothing posts to Instagram (or YouTube, once that's connected) without you tapping "Publish" on Telegram first.
+
+Everything below is the system built to satisfy those three requirements, running once a day without you touching a keyboard — until the moment it needs your thumb.
+
+2. The one-sentence version
+
+Every morning, a GitHub Actions robot wakes up, reads ~24 AI news feeds, throws out anything unverified or hype-y, picks the 3 best stories, finds real photos for them, writes plain-English copy, builds a 6-slide Instagram carousel and a 30–58 second vertical video, sends you the whole thing on Telegram, waits (up to 2 hours) for you to tap Publish or Discard, and — only if you tap Publish — posts it live to Instagram.
+
+3. High-level architecture
+GitHub Actions cron (08:22 UTC daily)
+        │
+        ▼
+1. INGEST        — pull ~24 RSS feeds, normalize into "Item" objects
+        │
+        ▼
+2. VERIFY/SELECT  — cluster duplicate coverage, classify, reject hype/rumour,
+                    score, pick the best 3, skip anything already posted
+        │
+        ▼
+3. IMAGES         — find a real photo per story (article photo → company
+                    homepage photo → company logo → generated brand panel)
+        │
+        ▼
+4. WRITE COPY     — Claude (Anthropic API) rewrites each story into a
+                    headline, teaser, bullets, "why it matters", narration
+                    line — or a free rule-based writer if no API key is set
+        │
+        ▼
+5. RENDER         — Jinja2 + headless Chromium screenshot 6 carousel slides
+                    (JPEG); separately, text-to-speech + ffmpeg build a
+                    vertical narrated video
+        │
+        ▼
+6. APPROVAL GATE  — Telegram bot sends you the full preview + Publish/
+                    Discard buttons; pipeline blocks here until you respond
+                    (or 2 hours pass, in which case nothing posts)
+        │
+        ├── you tap Discard, or timeout ──▶ nothing published, run ends
+        │
+        └── you tap Publish
+                │
+                ▼
+        7. HOST ASSETS  — slides/video get pushed to a GitHub Release so
+                           they have public HTTPS URLs (Instagram requires
+                           this — it won't accept direct file uploads)
+                │
+                ▼
+        8. PUBLISH       — Instagram Graph API creates the carousel
+                           container and publishes it live
+                │
+                ▼
+        (YouTube publishing exists in code but isn't wired up yet)
+
+A rendered diagram of this same flow (with the exact code files at each step) is in architecture.html, delivered separately — open it in any browser.
+
+4. Walking through each stage in detail
+Stage 0 — The trigger: GitHub Actions
+
+File: .github/workflows/daily.yml
+
+A GitHub Actions workflow is a robot that lives in your repository and runs on GitHub's own servers — not your laptop, not this session. Every day at 08:22 UTC (09:22 in British Summer Time), GitHub spins up a fresh, disposable Ubuntu virtual machine, checks out your code, installs Python 3.12, ffmpeg, and espeak-ng, installs all Python dependencies plus a headless Chromium browser (via Playwright), and then runs one command:
+
+python -m aidaily.cli run --approval-timeout 7200
+
+It also accepts a manual trigger (workflow_dispatch) with two optional flags — dry_run (build everything but publish nothing) and no_approval (skip the Telegram gate, useful for testing). A concurrency guard ensures two editions can never build at once. The VM is destroyed after the run — nothing persists there except what gets explicitly committed back to your repo (the "seen stories" list, see Stage 2) or uploaded as a build artifact.
+
+All the sensitive values it needs — Anthropic API key, Instagram token, Telegram bot token, etc. — are stored as GitHub Actions secrets, injected as environment variables only for the duration of the run. They're never written into any file in the repo.
+
+Stage 1 — Ingest
+
+File: aidaily/ingest.py · Config: config/sources.yaml
+
+This stage's only job is fetching raw news, with zero judgment about whether it's trustworthy — that's the next stage's problem. config/sources.yaml lists 24 allowlisted RSS/Atom feeds in three trust tiers:
+
+Tier 1 (15 feeds) — official sources: the labs' own blogs (OpenAI, Anthropic, Google DeepMind, Google Research, Meta AI, Microsoft Research, Microsoft AI, Cohere, NVIDIA, Hugging Face, Mistral AI, AWS ML) plus 3 arXiv preprint feeds (cs.AI, cs.LG, cs.CL).
+Tier 2 (8 feeds) — established press: TechCrunch AI, The Verge AI, Ars Technica AI, VentureBeat AI, MIT Technology Review, IEEE Spectrum AI, Wired AI, Reuters Technology.
+Tier 3 (1 feed) — Hacker News, filtered to AI topics — a single "what's the internet talking about" aggregator signal.
+
+fetch_all() hits all 24 feeds in parallel (10 at a time), keeps only items published in the last 30 hours, filters non-lab sources to on-topic items using a keyword list, and de-duplicates by URL. Every article becomes an Item — a small data record with title, link, summary, publish time, source name/tier, and any outbound links found in its summary (used later to detect when a press article is citing an official source directly). Nothing here requires an API key; it's plain HTTP + feed parsing.
+
+Stage 2 — Verify & select
+
+File: aidaily/verify.py
+
+This is the credibility gate — arguably the most important file in the whole system, because it's what stops the pipeline from ever publishing something false or overhyped.
+
+Cluster. Items covering the same event get grouped into a Story (e.g. if TechCrunch and The Verge both wrote about the same OpenAI announcement, that's one Story with two Items), based on headline similarity and whether one article's outlinks point to the other.
+Classify. Each story is tagged with a category — model release, product launch, tool release, regulation, business, or research — based on keyword matching, used later for editorial ranking and slide labeling.
+Reject hype and rumour. Any story containing clickbait phrasing (at any tier) or rumour/speculation language (for tier 2+ sources) is rejected outright, no matter how many outlets picked it up.
+Apply tier rules. A tier-1 (official lab) story is trusted on its own. A tier-2 (press) story needs either a second corroborating source or a direct outlink to a tier-1 primary source. A tier-3 (aggregator) story needs at least two corroborating sources, one of which must be tier 2 or better. Anything that doesn't meet its bar is dropped.
+Score and rank. Surviving stories get a numeric score combining source tier, category importance, how many independent sources corroborate it, whether it links directly to a primary source, freshness (newer scores higher), and a penalty for hedging language ("reportedly," "sources say," etc.).
+Select. The top 3 stories are chosen, capped at one story per source (so one outlet can't dominate the whole edition), and — critically — anything already published in a previous edition is skipped entirely (see Stage 9, "seen store").
+
+Nothing here calls any external API either; it's pure logic over the data already fetched.
+
+Stage 3 — Images
+
+File: aidaily/images.py · Config: config/companies.yaml
+
+Every slide needs a real photo, not a stock image, so this stage tries — in order — to find one:
+
+The article's own photo. It fetches the actual article page and looks for its og:image/twitter:image meta tags or the largest in-body image, rejecting generic "site-wide share card" images that every article on that domain reuses.
+The subject company's homepage photo. config/companies.yaml maps ~32 AI companies (OpenAI, Anthropic, Google, Microsoft, NVIDIA, Meta, and so on) to domains and name aliases, so the pipeline can detect which company the story is about (not which outlet reported it) and pull that company's own homepage hero image.
+The company's logo, composited onto a branded panel, if no photo is available anywhere.
+A fully generated brand panel (just the template's own design, no photo) as the last resort.
+
+Every image gets composited into a consistent panel — a blurred, darkened version of the photo as a backdrop, with a sharp crop or letterboxed version on top — so all slides look visually consistent regardless of the source photo's original size or aspect ratio.
+
+Stage 4 — Write copy
+
+File: aidaily/summarize.py · Config: config/settings.yaml (summarize: section)
+
+This is where Claude (the Anthropic API) turns the verified, sourced stories into actual publishable words: an 8-word-or-fewer headline, a short cover-slide teaser, up to 3 bullet points, a "why it matters" line, and a narration line for the video — for every story, plus edition-level copy (intro line, Instagram caption, YouTube title/description). The prompt explicitly instructs the model to stay grounded in only what the sources said, avoid hype/marketing language, and write in plain third-person English.
+
+If ANTHROPIC_API_KEY isn't set (or the model's response fails to parse as valid JSON), the pipeline doesn't crash — it falls back to a free, rule-based writer that does its best with regex-based headline rewriting, jargon substitution, and sentence extraction. This fallback is genuinely how the very first test editions were produced, before any billing was set up; it's serviceable for press-style writing but struggles with dense academic abstracts (see the arXiv issue in the Backlog section).
+
+Stage 5 — Render
+
+Files: aidaily/render_carousel.py, aidaily/render_video.py · Templates: templates/slide.html.j2, templates/frame.html.j2
+
+Nothing here is a design tool or image library — the trick is that HTML/CSS is a genuinely great rendering engine, so each slide is built as an actual webpage and then screenshotted:
+
+Carousel (render_carousel.py): each of the 6 slides (cover, up to 3 story slides, "why it matters," "follow us") is a Jinja2-templated HTML page at 1080×1350px, opened in headless Chromium via Playwright, screenshotted, then converted to JPEG (Instagram's Graph API requires JPEG, not PNG). A small JavaScript pass automatically shrinks text size until long headlines/bullets fit their slide without overflowing.
+Video (render_video.py): one narration line per frame (the intro plus each story's script_line) is converted to speech via edge-tts (falling back to the offline espeak-ng if that's unavailable), each corresponding HTML frame (1080×1920px, leaving space at top/bottom for Instagram's own Reels UI overlays) is screenshotted the same way, and ffmpeg applies a slow zoom effect to each frame, muxes in its audio, and concatenates all the clips into one short.mp4. If the combined narration would run longer than 58 seconds, it speeds up the audio slightly rather than cutting content.
+Stage 6 — Human approval
+
+File: aidaily/approval.py
+
+This is the deliberate, non-negotiable checkpoint: the whole point of the human-in-the-loop design. A Telegram bot sends a text digest (headline, body, source tier, and link for each story), the slide images as a photo album, the video file, and finally a message with two inline buttons — Publish and Discard. The pipeline then blocks — literally polls Telegram every 25 seconds — for up to 2 hours, waiting for you to tap one of those buttons on your phone. If you tap Publish, it proceeds to Stage 7. If you tap Discard, or 2 hours pass with no response, the run ends cleanly with nothing posted anywhere.
+
+Stage 7 — Host assets
+
+File: aidaily/assets.py
+
+Instagram's Graph API refuses direct file uploads — it needs a publicly reachable HTTPS URL for every image and video. Since there's no permanent web server in this setup, the pipeline solves that by uploading the finished slides and video as assets attached to a GitHub Release on your own repository (tagged assets-<date>), using the gh command-line tool. GitHub gives every release asset a stable public download URL, which is exactly what Instagram needs. (The code also supports S3-compatible storage as an alternative backend, but GitHub Releases is what's actually configured and running.)
+
+Stage 8 — Publish
+
+File: aidaily/publish_instagram.py
+
+Using the public URLs from Stage 7, this calls the Instagram Graph API's two-step publish pattern: create a "container" for each image (marking it as a carousel item), wait for Instagram to finish processing each one, create a parent carousel container referencing all of them, wait again, then call the final "publish" endpoint. It also checks your daily post quota beforehand (Instagram caps accounts at 100 posts per 24 hours) and verifies each asset URL is actually publicly reachable before attempting to use it, so a broken URL fails loudly with a clear error rather than a confusing Instagram-side rejection.
+
+Stage 9 — Remembering what's already been posted
+
+File: aidaily/state.py · Data: state/seen.json
+
+After a successful publish, every story's unique ID gets recorded in state/seen.json (entries expire after 21 days). Stage 2's selection logic checks this file and skips anything already in it, which is what stops the same story from being picked again just because it's still circulating in RSS feeds a day or two later. The GitHub Actions workflow commits this file back to the repository at the end of every successful run, so the "memory" persists from one day's automated run to the next even though each run happens on a brand-new, disposable virtual machine.
+
+5. The full tool stack
+Layer	Tool / service	What it's used for
+Orchestration	GitHub Actions	Daily cron trigger, disposable build environment, secret storage
+Language / runtime	Python 3.12	The entire pipeline
+News fetching	requests, feedparser, BeautifulSoup	Pulling and parsing RSS/Atom feeds and article pages
+Writing	Anthropic API (Claude)	Turning verified facts into plain-language copy
+Image sourcing	requests, Pillow (PIL)	Fetching, validating, and compositing photos/logos
+Slide rendering	Jinja2 + Playwright (headless Chromium)	Turning HTML templates into JPEG carousel slides
+Video rendering	edge-tts / espeak-ng, ffmpeg	Narration audio and vertical video assembly
+Human approval	Telegram Bot API	Sending previews and collecting Publish/Discard decisions
+Asset hosting	GitHub Releases (via gh CLI)	Giving Instagram a public HTTPS URL for each image/video
+Publishing	Instagram Graph API (graph.instagram.com)	Creating and publishing the live carousel post
+Publishing (not yet connected)	YouTube Data API v3	Uploading the same video as a YouTube Short
+State	A JSON file in the repo (state/seen.json)	Remembering what's already been published, to avoid repeats
+6. Configuration files — where the "knobs" live
+config/sources.yaml — the 24 RSS feeds and their trust tiers.
+config/companies.yaml — the ~32 companies the pipeline can recognize, for image sourcing.
+config/settings.yaml — everything else that's tunable: brand colors/fonts, how far back to look for news (lookback_hours), how many stories to select per day (target_story_count, currently 3), image sizing rules, which Claude model to use, headline/bullet length limits, carousel dimensions, video length/voice settings, and which publish destinations are enabled.
+
+Changing any of these doesn't require touching code — just editing the YAML.
+
+7. Credentials this system needs to run
+
+All of these live as GitHub Actions secrets (never as plain text in any file):
+
+Secret	Used for	Notes
+ANTHROPIC_API_KEY	Writing copy (Stage 4)	Falls back to free rule-based writer if unset
+IG_USER_ID, IG_ACCESS_TOKEN	Publishing to Instagram (Stage 8)	Long-lived token; expires roughly every 60 days and needs refreshing
+TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID	Approval gate (Stage 6)	Your personal bot, messaging only you
+GH_TOKEN	Hosting assets (Stage 7) via GitHub Releases	In Actions this is the auto-generated GITHUB_TOKEN; for local/manual runs you need your own fine-grained personal access token
+YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN	YouTube uploads	Present in the workflow but not yet onboarded — see Backlog
+8. What happens on a normal day, end to end
+08:22 UTC — GitHub spins up a fresh VM and starts the run.
+It reads news, verifies it, sources images, writes copy, and renders the carousel + video — all fully automatic, roughly a few minutes of work.
+You get a Telegram message on your phone with the full preview and two buttons.
+You review it (headlines, sourcing, images) and tap Publish — or Discard if something looks off.
+If published: assets get hosted on GitHub, the post goes live on Instagram, and the story IDs get remembered so they won't be suggested again.
+The VM is destroyed. Nothing runs again until tomorrow's 08:22 UTC trigger.
+
+Your only regular touchpoint is one tap on your phone each morning.
+
+9. Known gaps and what's next (see BACKLOG.md for the live list)
+Robustness: a failed Telegram video upload currently crashes the whole approval flow before the Publish/Discard buttons even get sent (fix identified, not yet applied); the copy-writing stage doesn't yet fall back gracefully if the Anthropic API itself errors out (e.g. a billing failure) mid-call.
+Content quality: arXiv papers sometimes get miscategorized, which can cause them to outrank real product news in story selection.
+Maintenance: five RSS feeds are dead and need replacing; the GitHub Actions workflow is running on a soon-to-be-deprecated Node runtime.
+Expiring credentials: the Instagram token needs refreshing roughly every 60 days; the GitHub token used for asset hosting expires 13 Nov 2026.
+YouTube: code exists (publish_youtube.py) but isn't onboarded yet — needs a Google Cloud project, OAuth client, and refresh token, and new/unaudited Google API projects get uploads force-set to private until Google approves a compliance audit.
+
+None of these block the daily post; they're tracked so they don't get forgotten.
+
+10. Glossary
+RSS/Atom feed — a machine-readable list of a website's recent articles, so software can check "what's new" without a human browsing the site.
+Corroboration — how many independent sources are reporting the same story; used as a trust signal.
+Tier — a manually-assigned trust level for each news source (1 = official lab blog, 2 = established press, 3 = aggregator).
+Headless browser — a real web browser (Chromium) running with no visible window, controlled entirely by code — used here purely to turn HTML into a pixel-perfect screenshot.
+Graph API — Meta's API for programmatically posting to Instagram/Facebook.
+Container (Instagram) — a temporary, not-yet-published draft of a single image or video that Instagram processes before it can be attached to a real post.
+GitHub Actions secret — an encrypted value stored on GitHub, injected as an environment variable only while a workflow is running, never visible in logs or code.
+Seen store — the state/seen.json file that remembers which stories have already been published, to prevent duplicates.
+Approval gate — the mandatory Telegram Publish/Discard step; nothing reaches Instagram without you tapping it.
