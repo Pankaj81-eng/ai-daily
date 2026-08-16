@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from urllib.parse import urlparse
 
+from .config import load_companies
 from .models import Item, Story
 
 log = logging.getLogger(__name__)
@@ -80,9 +81,33 @@ def _domain(url: str) -> str:
         return ""
 
 
+@lru_cache(maxsize=1)
+def _known_company_domains() -> frozenset[str]:
+    """Domains of companies we recognise (config/companies.yaml), treated as
+    primary sources even when we don't subscribe to their blog's RSS feed.
+
+    Without this, a tier-2 article that links straight to e.g. a company's own
+    announcement of its own news still gets rejected for "no primary source
+    link", purely because we didn't happen to add that one company's blog as
+    a dedicated tracked feed. We already maintain a list of company domains
+    for image sourcing - reuse it here so outlink credit isn't limited to the
+    ~15 blogs we literally subscribe to.
+    """
+    try:
+        companies = load_companies()
+    except Exception:  # pragma: no cover - config issues shouldn't crash verify
+        log.warning("could not load companies.yaml for primary-domain matching")
+        return frozenset()
+    return frozenset(
+        c["domain"].lower() for c in companies if c.get("domain")
+    )
+
+
 def primary_domains(items: list[Item]) -> set[str]:
-    """Domains that count as primary, derived from the tier-1 feeds in use."""
-    return {_domain(i.link) for i in items if i.source_tier == 1 and i.link}
+    """Domains that count as primary: subscribed tier-1 feeds, plus any
+    company we recognise even if we don't subscribe to their blog directly."""
+    feed_domains = {_domain(i.link) for i in items if i.source_tier == 1 and i.link}
+    return feed_domains | _known_company_domains()
 
 
 def _links_to(a: Item, b: Item) -> bool:

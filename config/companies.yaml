@@ -111,3 +111,9 @@ companies:
   - name: European Commission
     domain: digital-strategy.ec.europa.eu
     aliases: [European AI Office, European Commission, EU AI Act, AI Act]
+  - name: Cursor
+    domain: cursor.com
+    aliases: [Cursor, Anysphere]
+  - name: SpaceX
+    domain: spacex.com
+    aliases: [SpaceX, Starlink, Starship]
