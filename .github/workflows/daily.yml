@@ -2,9 +2,9 @@ name: AI Daily
 
 on:
   schedule:
-    # 06:15 UTC. GitHub's scheduler drifts under load, so treat this as
-    # "shortly after 06:15", not a hard guarantee.
-    - cron: "22 8 * * *"
+    # 06:15 UTC (07:15 UK summer time / BST). GitHub's scheduler drifts under
+    # load, so treat this as "shortly after 06:15", not a hard guarantee.
+    - cron: "15 6 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -27,8 +27,9 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # Generous: most of it is the human approval window.
-    timeout-minutes: 150
+    # Generous: most of it is the human approval window (150 min) plus
+    # headroom for build/publish either side of it.
+    timeout-minutes: 180
 
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +68,7 @@ jobs:
           python -m aidaily.cli run \
             ${{ inputs.dry_run && '--dry-run' || '' }} \
             ${{ inputs.no_approval && '--no-approval' || '' }} \
-            --approval-timeout 7200
+            --approval-timeout 9000
 
       - name: Upload build artifacts
         if: always()
