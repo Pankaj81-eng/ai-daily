@@ -60,20 +60,6 @@ sources:
     tier: 1
     tags: [cloud]
 
-  # ---------------- Tier 1: research preprints ------------------------------
-  - name: arXiv cs.AI
-    url: http://export.arxiv.org/rss/cs.AI
-    tier: 1
-    tags: [research]
-  - name: arXiv cs.LG
-    url: http://export.arxiv.org/rss/cs.LG
-    tier: 1
-    tags: [research]
-  - name: arXiv cs.CL
-    url: http://export.arxiv.org/rss/cs.CL
-    tier: 1
-    tags: [research]
-
   # ---------------- Tier 2: established technology press --------------------
   - name: TechCrunch AI
     url: https://techcrunch.com/category/artificial-intelligence/feed/
