@@ -1,17 +1,18 @@
-"""Stage 4a - render the six-slide Instagram carousel.
+"""Stage 4a - render the four-slide Instagram carousel.
 
 Slides are laid out as HTML and screenshotted with headless Chromium, which
 gives real typography, gradients and image compositing without fighting an
 imaging library.
 
-Structure:
-  1     cover           "Today in AI" + the three headlines
-  2-4   story           image-led, headline, up to three bullets, source
-  5     matters         what today means for builders, businesses, learners
-  6     follow          the call to action
+One story a day now, not three (see aidaily.editorial) - so the carousel is a
+fixed four slides, not a variable cover+N+matters+follow deck:
+  1  headline    image-led, the headline, source
+  2  what        what happened - up to three bullets, no image (more room)
+  3  why         why engineers should care - up to three bullets
+  4  take        the TechTales Take + follow CTA folded into the footer
 
 Instagram crops every slide in a carousel to the aspect ratio of the FIRST
-slide, so all six are rendered on an identical 1080x1350 canvas.
+slide, so all four are rendered on an identical 1080x1350 canvas.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from PIL import Image
 
 from .config import ROOT
+from .images import detect_company
 from .models import Edition
 
 log = logging.getLogger(__name__)
@@ -113,17 +115,46 @@ def _why_size(text: str) -> int:
     return 30 if len(text) <= 78 else 27
 
 
-# Shrinks the story copy until it fits its fixed area. The image panel keeps
-# its size; only the type scales, and only when it has to.
+def _card_size(bullets: list[str]) -> int:
+    """Type size for the text-only 'what'/'why' slides - these have the
+    whole slide to themselves (no image eating half the canvas), so they can
+    run noticeably bigger than the image-led headline slide's bullets."""
+    total = sum(len(b) for b in bullets)
+    if total <= 90:
+        return 42
+    if total <= 150:
+        return 36
+    if total <= 220:
+        return 31
+    return 27
+
+
+def _take_size(text: str) -> int:
+    if len(text) <= 110:
+        return 46
+    if len(text) <= 180:
+        return 40
+    return 34
+
+
+# Shrinks a slide's copy until it fits its fixed area. Each slide kind has
+# its own box/inner pair (.copy/.copy-inner for the headline slide,
+# .wim/.wim-inner for what/why, .take-wrap/.take-inner for the take slide) -
+# try each rather than hard-coding one, since which pair exists depends on
+# which slide is on screen.
 _AUTOFIT_JS = """
 () => {
-  const box = document.querySelector('.copy');
-  const inner = document.querySelector('.copy-inner');
+  const pairs = [['.copy', '.copy-inner'], ['.wim', '.wim-inner'],
+                 ['.take-wrap', '.take-inner']];
+  let box = null, inner = null;
+  for (const [b, i] of pairs) {
+    const bEl = document.querySelector(b), iEl = document.querySelector(i);
+    if (bEl && iEl) { box = bEl; inner = iEl; break; }
+  }
   if (!box || !inner) return 1;
   let fit = 1;
   const root = document.documentElement;
-  // Safety margin so the "why it matters" card never sits flush against the
-  // footer rule.
+  // Safety margin so the last card/line never sits flush against the footer rule.
   const limit = box.clientHeight - 16;
   while (inner.scrollHeight > limit && fit > 0.70) {
     fit = Math.round((fit - 0.03) * 100) / 100;
@@ -137,10 +168,30 @@ _AUTOFIT_JS = """
 def _slide_specs(edition: Edition, settings: dict) -> list[dict]:
     brand = settings["brand"]
     ccfg = settings["carousel"]
-    n_stories = len(edition.stories)
-    total = n_stories + 3          # cover + stories + matters + follow
+    total = 4
+
+    if len(edition.stories) != 1:
+        log.warning(
+            "edition has %d stories, but the carousel is now a fixed 4-slide "
+            "single-story deck - using the first and ignoring the rest",
+            len(edition.stories),
+        )
+    story = edition.stories[0]
 
     date_label = datetime.strptime(edition.date, "%Y-%m-%d").strftime("%d %b %Y")
+    category_label = CATEGORY_LABELS.get(story.category, "AI news")
+
+    # The generated panel and slide footers name the company the story is
+    # ABOUT, never the outlet or repository that reported it - "subject" and
+    # "source" must never be interchangeable, or a research-repository feed
+    # like arXiv (which has no per-article identity of its own) ends up
+    # rendered as if it were the headline. story.company is only populated
+    # here if the image stage already detected one (it skips detection once
+    # an official image is found, so this re-runs it rather than trusting
+    # that story.company is reliably set); if no company can be identified at
+    # all, fall back to the editorial category - never to the source name.
+    subject = story.company or (detect_company(story) or (None, None))[0] or category_label
+
     common = {
         "w": ccfg["width"],
         "h": ccfg["height"],
@@ -153,49 +204,44 @@ def _slide_specs(edition: Edition, settings: dict) -> list[dict]:
         "date_label": date_label,
         "logo_uri": _logo_uri(brand.get("logo")),
         "pages": total,
-        "story_total": n_stories,
+        "source": story.source_label,
+        "subject": subject,
+        "category_label": category_label,
     }
 
-    specs = [{
-        **common,
-        "kind": "cover",
-        "subtitle": edition.outro or f"{n_stories} AI stories that matter today",
-        # Teasers, not headlines: the cover is a hook, not a contents page.
-        "toc": [s.teaser or s.headline for s in edition.stories],
-        "page": 1,
-    }]
-
-    for i, story in enumerate(edition.stories, start=1):
-        specs.append({
+    return [
+        {
             **common,
-            "kind": "story",
-            "index": i,
+            "kind": "headline",
             "title": story.headline,
-            "bullets": story.bullets,
-            "why": story.why_it_matters,
-            "source": story.source_label,
-            # The generated panel names the company the story is about, which
-            # is more recognisable than the outlet that reported it.
-            "subject": story.company or story.source_label,
-            "category_label": CATEGORY_LABELS.get(story.category, "AI news"),
             "image_uri": _uri(story.image_path),
             "headline_size": _headline_size(story.headline),
-            "bullet_size": _bullet_size(story.bullets),
-            "why_size": _why_size(story.why_it_matters),
-            "page": i + 1,
-        })
-
-    specs.append({
-        **common,
-        "kind": "matters",
-        "professionals": edition.matters_professionals,
-        "businesses": edition.matters_businesses,
-        "learners": edition.matters_learners,
-        "page": total - 1,
-    })
-
-    specs.append({**common, "kind": "follow", "page": total})
-    return specs
+            "page": 1,
+        },
+        {
+            **common,
+            "kind": "what",
+            "card_title": "What happened",
+            "bullets": story.bullets,
+            "card_size": _card_size(story.bullets),
+            "page": 2,
+        },
+        {
+            **common,
+            "kind": "why",
+            "card_title": "Why engineers should care",
+            "bullets": story.why_bullets,
+            "card_size": _card_size(story.why_bullets),
+            "page": 3,
+        },
+        {
+            **common,
+            "kind": "take",
+            "take": story.take,
+            "take_size": _take_size(story.take),
+            "page": 4,
+        },
+    ]
 
 
 def render(edition: Edition, settings: dict, out_dir: Path) -> list[Path]:
@@ -224,11 +270,12 @@ def render(edition: Edition, settings: dict, out_dir: Path) -> list[Path]:
             page.goto(html_path.as_uri())
             page.wait_for_timeout(750)          # let webfonts and images settle
 
-            fit = 1.0
-            if spec["kind"] == "story":
-                fit = page.evaluate(_AUTOFIT_JS)
-                if fit < 1.0:
-                    page.wait_for_timeout(120)
+            # Every slide now carries a .copy/.copy-inner autofit box (the
+            # headline slide included), since a single story's copy can run
+            # long in ways a fixed 3-bullet-max deck never had to absorb.
+            fit = page.evaluate(_AUTOFIT_JS)
+            if fit < 1.0:
+                page.wait_for_timeout(120)
 
             png = out_dir / f"slide_{i:02d}.png"
             page.screenshot(path=str(png))

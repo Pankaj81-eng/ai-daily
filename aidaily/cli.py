@@ -17,13 +17,22 @@ from datetime import datetime
 from pathlib import Path
 
 from . import (
-    approval, images, ingest, render_carousel, render_video, summarize, verify,
+    approval, editorial, images, ingest, render_carousel, render_video, summarize, verify,
 )
 from .config import OUT_DIR, SECRETS, env, load_settings, load_sources
 from .models import Edition
 from .state import SeenStore
 
 log = logging.getLogger("aidaily")
+
+
+class NoNewsletterToday(Exception):
+    """Nothing cleared the editorial bar today. This is a normal, expected,
+    frequent outcome under the "publish nothing rather than noise" policy -
+    not a crash. Kept as its own exception (rather than a bare SystemExit,
+    which every other failure in build() also raises) so cmd_run can tell
+    "we correctly chose not to publish" apart from "something actually broke",
+    and notify Telegram accordingly instead of going silent either way."""
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -80,9 +89,17 @@ def build(
     verified = verify.verify(stories, settings, primaries)
 
     seen = SeenStore()
-    selected = verify.select(verified, settings, seen)
-    if not selected:
-        raise SystemExit("Nothing new passed verification today. Not posting.")
+    candidates = verify.top_candidates(verified, seen)
+    if not candidates:
+        raise NoNewsletterToday("Nothing new passed verification today.")
+
+    chosen = editorial.select_story(candidates, settings)
+    if chosen is None:
+        raise NoNewsletterToday(
+            "Editorial gate: no candidate cleared the bar today - "
+            "publishing nothing rather than noise."
+        )
+    selected = [chosen]
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -94,7 +111,11 @@ def build(
         images.attach_images(selected, settings, out_dir)
     selected = images.drop_imageless(selected, settings)
     if not selected:
-        raise SystemExit("No story had a usable image. Not posting.")
+        raise NoNewsletterToday(
+            f"Today's chosen story ({chosen.headline or chosen.title}) had no "
+            "usable image. Not posting - not falling back to a lower-quality "
+            "candidate, since that would undercut the editorial pick."
+        )
 
     edition = summarize.summarize(selected, settings, date)
     (out_dir / "edition.json").write_text(json.dumps(edition.to_dict(), indent=2))
@@ -116,7 +137,22 @@ def cmd_run(args: argparse.Namespace) -> int:
     date = args.date or datetime.now().strftime("%Y-%m-%d")
     out_dir = Path(args.out) if args.out else OUT_DIR / date
 
-    edition, slides, video = build(settings, date, out_dir, args.fixtures)
+    try:
+        edition, slides, video = build(settings, date, out_dir, args.fixtures)
+    except NoNewsletterToday as exc:
+        # A legitimate, expected outcome under "publish nothing rather than
+        # noise" - not a failure. Say so on Telegram (so a quiet morning
+        # reads as "checked and nothing qualified", not "the job silently
+        # died") and exit 0, so this never gets flagged next to real crashes.
+        log.info("no newsletter today - %s", exc)
+        tg_token, tg_chat = env("TELEGRAM_BOT_TOKEN"), env("TELEGRAM_CHAT_ID")
+        if tg_token and tg_chat:
+            approval.notify(
+                tg_token, tg_chat,
+                f"No newsletter today.\n\n{exc}\n\nThis is expected - nothing "
+                f"cleared the bar, so nothing was published.",
+            )
+        return 0
 
     log.info("built %d slides%s in %s", len(slides),
              " + video" if video else "", out_dir)

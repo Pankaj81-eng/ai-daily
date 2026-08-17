@@ -93,6 +93,25 @@ def test_aggregator_alone_is_always_rejected():
     assert kept == []
 
 
+def test_lone_arxiv_paper_is_hard_rejected():
+    """A paper with no independent pickup has no evidence of real impact."""
+    items = [_item("A new attention variant for long-context inference",
+                   "arXiv cs.LG", 1, "https://arxiv.org/abs/2601.00001")]
+    assert _run(items) == []
+
+
+def test_arxiv_paper_with_independent_pickup_is_judged_normally():
+    """A paper a real outlet also covered gets real corroboration credit."""
+    items = [
+        _item("A new attention variant for long-context inference",
+              "arXiv cs.LG", 1, "https://arxiv.org/abs/2601.00001"),
+        _item("Researchers unveil a faster attention mechanism",
+              "TechCrunch AI", 2, "https://techcrunch.com/attention-variant",
+              outlinks=["https://arxiv.org/abs/2601.00001"]),
+    ]
+    assert len(_run(items)) == 1
+
+
 # --------------------------------------------------------------------------
 # clustering
 # --------------------------------------------------------------------------
@@ -157,7 +176,10 @@ def test_full_fixture_set_rejects_the_right_stories():
     titles = " ".join(_titles(kept)).lower()
     assert "reportedly in talks" not in titles, "lone rumour leaked through"
     assert "show hn" not in titles, "aggregator item leaked through"
-    assert len(kept) == 5
+    assert "sparse attention" not in titles, (
+        "lone arXiv item with no independent corroboration leaked through"
+    )
+    assert len(kept) == 4
 
 
 def test_dedupe_respects_seen_store():
@@ -337,7 +359,7 @@ def test_bullets_lose_first_person_voice():
 # --------------------------------------------------------------------------
 
 from aidaily.images import detect_company            # noqa: E402
-from aidaily.models import Story                     # noqa: E402
+from aidaily.models import Edition, Story             # noqa: E402
 from aidaily.summarize import plainify               # noqa: E402
 
 
@@ -384,6 +406,28 @@ def test_unknown_company_falls_back_gracefully():
     assert detect_company(story) is None
 
 
+def test_subject_never_falls_back_to_the_source_name():
+    """The exact 'arXiv becomes the visual headline' bug: when no company can
+    be identified, the generated panel and slide footers must show the
+    editorial category, never the reporting outlet or research-repo feed
+    name - the subject is what the story is ABOUT, not who is telling it."""
+    from aidaily.render_carousel import _slide_specs
+
+    story = Story(items=[_item(
+        "A new attention variant for long-context inference",
+        "arXiv cs.LG", 1, "https://arxiv.org/abs/2601.00002",
+    )])
+    story.headline = "New attention variant cuts inference cost"
+    story.category = "research"
+    edition = Edition(date="2026-08-14", stories=[story])
+
+    spec = _slide_specs(edition, SETTINGS)[0]
+    assert spec["subject"] != story.source_label
+    assert spec["subject"] == "Research"
+    # The source is still shown - just never as the subject.
+    assert spec["source"] == "arXiv cs.LG"
+
+
 # --------------------------------------------------------------------------
 # why it matters + article imagery (V1 final)
 # --------------------------------------------------------------------------
@@ -392,12 +436,29 @@ from aidaily.images import _srcset_largest          # noqa: E402
 from aidaily.summarize import _fallback_why         # noqa: E402
 
 
-def test_every_story_gets_a_why_it_matters_without_a_model():
+def test_the_published_story_gets_a_why_it_matters_without_a_model():
+    """summarize() now writes up a single story (the editorial gate's pick),
+    not a fixed-size list - confirm the fallback path still fills why_it_matters
+    for that one story when no API key is configured."""
     from aidaily.summarize import summarize
     stories = verify.select(_run(fixture_items()), SETTINGS,
                             type("S", (), {"has": lambda self, u: False})())
     edition = summarize(stories, SETTINGS, "2026-08-14")
-    assert all(s.why_it_matters for s in edition.stories)
+    assert len(edition.stories) == 1
+    assert edition.stories[0].why_it_matters
+
+
+def test_summarize_with_multiple_stories_uses_only_the_first():
+    """Defensive: summarize() should only ever be called with one story (the
+    editorial gate's pick), but if a caller passes more, it must not silently
+    drop data for the wrong story - it writes up stories[0] and ignores the rest."""
+    from aidaily.summarize import summarize
+    stories = verify.select(_run(fixture_items()), SETTINGS,
+                            type("S", (), {"has": lambda self, u: False})())
+    assert len(stories) > 1, "fixture needs 2+ passing stories for this test to mean anything"
+    edition = summarize(stories, SETTINGS, "2026-08-14")
+    assert len(edition.stories) == 1
+    assert edition.stories[0].headline == stories[0].headline
 
 
 def test_same_category_stories_get_different_takeaways():

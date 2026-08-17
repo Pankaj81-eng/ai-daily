@@ -202,6 +202,14 @@ def classify(story: Story, cfg: dict) -> str:
     return best
 
 
+# Research repositories, not news sources. A paper being posted here is not
+# evidence it has affected anything outside itself - only independent pickup
+# by a real product, company, or press source counts as that evidence. This
+# is a hard filter, not an editorial preference: it runs before tier logic,
+# so even a tier-1-tagged arXiv item cannot pass on its own.
+_RESEARCH_ONLY_DOMAINS = {"arxiv.org"}
+
+
 def _has_primary_outlink(story: Story, primaries: set[str]) -> bool:
     for item in story.items:
         for link in item.outlinks:
@@ -220,6 +228,23 @@ def verify(stories: list[Story], settings: dict, primaries: set[str]) -> list[St
         story.corroboration = len({i.source_name for i in story.items})
         story.category = classify(story, cfg)
         has_primary_link = _has_primary_outlink(story, primaries)
+
+        # --- hard reject: research/preprint with no independent pickup -----
+        # Applied before tier logic on purpose - a paper sourced ONLY from a
+        # research repository (every item's domain is arxiv.org or similar)
+        # has no evidence yet that it has influenced a real product,
+        # framework, model, or engineering practice. If a press outlet or a
+        # company blog also covered it, that is genuine independent
+        # corroboration and the story is judged normally below.
+        story_domains = {_domain(i.link) for i in story.items if i.link}
+        if story_domains and story_domains <= _RESEARCH_ONLY_DOMAINS:
+            story.verified = False
+            story.reject_reason = (
+                "research/preprint only - no independent corroboration from "
+                "a product, company, or press source, so no evidence it has "
+                "influenced anything outside the paper itself"
+            )
+            continue
 
         # --- hard rejects, applied before anything else --------------------
         # Clickbait disqualifies at any tier: a brief that trades on
@@ -290,6 +315,20 @@ def verify(stories: list[Story], settings: dict, primaries: set[str]) -> list[St
         log.debug("  rejected %-60s | %s", s.title[:60], s.reject_reason)
 
     return kept
+
+
+def top_candidates(stories: list[Story], seen, limit: int = 8) -> list[Story]:
+    """Ranked, not-yet-published candidates for the editorial gate.
+
+    Unlike select(), this does not cap to a target story count or apply
+    per-source diversity - aidaily.editorial decides whether ANY of these is
+    worth publishing at all (including "none of them"), so it needs the real
+    ranked pool of everything that passed verification, not a pre-trimmed
+    one built for filling a fixed number of carousel slides.
+    """
+    fresh = [s for s in stories if not any(seen.has(i.uid) for i in s.items)]
+    ranked = sorted(fresh, key=lambda s: s.score, reverse=True)
+    return ranked[:limit]
 
 
 def select(stories: list[Story], settings: dict, seen) -> list[Story]:

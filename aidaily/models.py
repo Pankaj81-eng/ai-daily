@@ -59,9 +59,14 @@ class Story:
     # 3-5 word hook shown on the cover slide. Deliberately shorter than the
     # headline: the cover sells the swipe, it is not a table of contents.
     teaser: str = ""
-    bullets: list[str] = field(default_factory=list)
+    bullets: list[str] = field(default_factory=list)     # "What happened" (max 3)
     body: str = ""            # bullets joined, for the video frame
-    why_it_matters: str = ""
+    why_it_matters: str = ""  # legacy single-line takeaway, kept for make_edition.py
+    # "Why engineers should care" (max 3) - the editorial-gate slide format.
+    why_bullets: list[str] = field(default_factory=list)
+    # "TechTales Take" - one original insight or prediction. Must not repeat
+    # the news; this is the editor's judgment on what it implies.
+    take: str = ""
     # Spoken narration for this story's frame in the short. Kept per-story so
     # audio and visuals stay aligned without re-splitting a monolithic script.
     script_line: str = ""

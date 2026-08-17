@@ -113,3 +113,19 @@ sources:
     url: https://hnrss.org/frontpage?q=AI+OR+LLM+OR+OpenAI+OR+Anthropic
     tier: 3
     tags: [aggregator]
+  # Curated AI newsletters: useful for spotting a story early and for
+  # corroboration signal, but they summarise other people's reporting rather
+  # than doing any of their own - same trust level as an aggregator, not a
+  # newsroom. Never publishable alone under the tier-3 rule above.
+  - name: Ben's Bites
+    url: https://www.bensbites.com/feed
+    tier: 3
+    tags: [newsletter]
+  - name: TLDR AI
+    url: https://tldr.tech/api/rss/ai
+    tier: 3
+    tags: [newsletter]
+  - name: The Rundown AI
+    url: https://rss.beehiiv.com/feeds/2R3C6Bt5wj.xml
+    tier: 3
+    tags: [newsletter]

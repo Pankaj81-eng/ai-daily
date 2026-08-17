@@ -197,12 +197,13 @@
     line-height: 1.3; color: {{ c.text }}F0;
   }
 
-  /* ================= why it matters ================= */
+  /* ================= what / why (text-only, full-slide cards) ================= */
   .wim { flex: 1; display: flex; flex-direction: column; justify-content: center;
-         padding: 0 60px; z-index: 2; }
+         padding: 0 60px; z-index: 2; min-height: 0; overflow: hidden; }
+  .wim-inner { display: flex; flex-direction: column; }
   .wim-title {
-    font-size: 76px; font-weight: 900; line-height: 1.04;
-    letter-spacing: -.035em; margin-bottom: 44px;
+    font-size: 58px; font-weight: 900; line-height: 1.06;
+    letter-spacing: -.03em; margin-bottom: calc(40px * var(--fit));
   }
   .wim-title em {
     font-style: normal;
@@ -210,15 +211,47 @@
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
   .card {
-    padding: 30px 32px; margin-bottom: 20px; border-radius: 18px;
+    padding: calc(28px * var(--fit)) calc(30px * var(--fit));
+    margin-bottom: calc(20px * var(--fit)); border-radius: 18px;
     background: linear-gradient(120deg, {{ c.text }}0B, {{ c.text }}05);
     border: 1px solid {{ c.text }}16; border-left: 5px solid {{ c.accent }};
   }
   .card-l {
-    font-size: 19px; font-weight: 800; letter-spacing: .16em;
-    text-transform: uppercase; color: {{ c.accent_2 }}; margin-bottom: 12px;
+    font-size: 18px; font-weight: 800; letter-spacing: .16em;
+    text-transform: uppercase; color: {{ c.accent_2 }};
+    margin-bottom: calc(10px * var(--fit));
   }
-  .card-t { font-size: 33px; font-weight: 500; line-height: 1.32; }
+  .card-t {
+    font-size: calc({{ card_size|default(33) }}px * var(--fit));
+    font-weight: 500; line-height: 1.32;
+  }
+
+  /* ================= TechTales take ================= */
+  .take-wrap {
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    padding: 0 60px; z-index: 2; min-height: 0; overflow: hidden;
+  }
+  .take-inner { display: flex; flex-direction: column; }
+  .take-l {
+    font-size: 21px; font-weight: 800; letter-spacing: .18em;
+    text-transform: uppercase; color: {{ c.accent_2 }};
+    margin-bottom: calc(28px * var(--fit));
+  }
+  .take-quote {
+    font-size: calc(48px * var(--fit)); font-weight: 700; line-height: 1.28;
+    letter-spacing: -.015em; color: {{ c.text }}F2;
+  }
+  .take-rule {
+    width: 90px; height: 6px; border-radius: 4px;
+    margin-top: calc(36px * var(--fit));
+    background: linear-gradient(90deg, {{ c.accent_2 }}, {{ c.accent }});
+  }
+  .take-cta {
+    margin-top: calc(36px * var(--fit));
+    font-size: calc(24px * var(--fit)); font-weight: 700;
+    color: {{ c.text_dim }};
+  }
+  .take-cta b { color: {{ c.accent_2 }}; font-weight: 800; }
 
   /* ================= follow ================= */
   .follow {
@@ -290,31 +323,16 @@
   </div>
   {% endmacro %}
 
-  {# ---------------- COVER ---------------- #}
-  {% if kind == 'cover' %}
-    {{ brandbar(show_date=false) }}
-    <div class="cover-body">
-      <div class="eyebrow">Daily AI Brief</div>
-      <div class="date-hero">{{ date_label }}</div>
-      <div class="cover-title">Today<br>in AI</div>
-      <div class="rule"></div>
-      <div class="toc">
-        {% for t in toc %}
-        <div class="toc-row">
-          <div class="toc-n">0{{ loop.index }}</div>
-          <div class="toc-t">{{ t }}</div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    <div class="foot">
-      <div class="src">{{ handle }}</div>
-      <div class="swipe">Swipe &rarr;</div>
-    </div>
+  {% macro dots() %}
+  <div class="dots">
+    {% for i in range(1, pages + 1) %}
+    <i class="{{ 'on' if i == page else '' }}"></i>
+    {% endfor %}
+  </div>
+  {% endmacro %}
 
-
-  {# ---------------- STORY ---------------- #}
-  {% elif kind == 'story' %}
+  {# ---------------- 1: HEADLINE ---------------- #}
+  {% if kind == 'headline' %}
     <div class="photo">
       <div class="badge"><i></i>{{ source }}</div>
       <div class="stamp">
@@ -333,64 +351,48 @@
     <div class="copy">
       <div class="copy-inner">
         <div class="headline">{{ title }}</div>
-        <div class="bullets">
-          {% for b in bullets %}
-          <div class="bullet"><span></span><span>{{ b }}</span></div>
-          {% endfor %}
-        </div>
-        {% if why %}
-        <div class="why">
-          <div class="why-l">Why it matters</div>
-          <div class="why-t">{{ why }}</div>
-        </div>
-        {% endif %}
       </div>
     </div>
     <div class="foot">
-      <div class="src"><b>Source:</b> {{ source }}</div>
-      <div class="dots">
-        {% for i in range(story_total) %}
-        <i class="{{ 'on' if i == index - 1 else '' }}"></i>
-        {% endfor %}
-      </div>
+      <div class="src">{{ date_label }}</div>
+      {{ dots() }}
       <div class="pg">{{ handle }}</div>
     </div>
 
-  {# ---------------- WHY IT MATTERS ---------------- #}
-  {% elif kind == 'matters' %}
+  {# ---------------- 2: WHAT HAPPENED / 3: WHY ENGINEERS SHOULD CARE ---------------- #}
+  {% elif kind == 'what' or kind == 'why' %}
     {{ brandbar() }}
     <div class="wim">
-      <div class="wim-title">Why today's<br>news <em>matters</em></div>
-      <div class="card">
-        <div class="card-l">If you build software</div>
-        <div class="card-t">{{ professionals }}</div>
-      </div>
-      <div class="card">
-        <div class="card-l">If you run a business</div>
-        <div class="card-t">{{ businesses }}</div>
-      </div>
-      <div class="card">
-        <div class="card-l">If you're learning AI</div>
-        <div class="card-t">{{ learners }}</div>
+      <div class="wim-inner">
+        <div class="wim-title">{{ card_title }}</div>
+        {% for b in bullets %}
+        <div class="card">
+          <div class="card-l">0{{ loop.index }}</div>
+          <div class="card-t">{{ b }}</div>
+        </div>
+        {% endfor %}
       </div>
     </div>
     <div class="foot">
-      <div class="src">Every story links to its primary source</div>
+      <div class="src"><b>{{ subject }}</b> &middot; {{ source }}</div>
+      {{ dots() }}
       <div class="pg">{{ handle }}</div>
     </div>
 
-  {# ---------------- FOLLOW ---------------- #}
+  {# ---------------- 4: TECHTALES TAKE ---------------- #}
   {% else %}
-    {{ brandbar(false) }}
-    <div class="follow">
-      {% if logo_uri %}<img class="big" src="{{ logo_uri }}" alt="">{% else %}<div class="mark big">TT</div>{% endif %}
-      <div class="follow-t">Follow <em>{{ brand_name }}</em><br>for daily AI updates</div>
-      <div class="follow-s">Trusted AI updates in under 20 seconds.</div>
-      <div class="cta">{{ handle }}</div>
-      <div class="handles">YouTube {{ youtube }}</div>
+    {{ brandbar() }}
+    <div class="take-wrap">
+      <div class="take-inner">
+        <div class="take-l">TechTales Take</div>
+        <div class="take-quote">{{ take }}</div>
+        <div class="take-rule"></div>
+        <div class="take-cta">Follow <b>{{ handle }}</b> for the next signal, not the next headline.</div>
+      </div>
     </div>
     <div class="foot">
-      <div class="src">New AI brief every morning</div>
+      <div class="src">Source linked in bio &middot; YouTube {{ youtube }}</div>
+      {{ dots() }}
       <div class="pg">{{ handle }}</div>
     </div>
   {% endif %}

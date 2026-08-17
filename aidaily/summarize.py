@@ -27,17 +27,21 @@ from .models import Edition, Story
 
 log = logging.getLogger(__name__)
 
-SYSTEM = """You write the daily AI brief for TechTales Engineering, an
-Instagram and YouTube channel whose promise is "AI engineering made simple".
+SYSTEM = """You write TechTales - an AI Engineering Signal Channel, not an AI
+news channel. Every story you are given has already cleared editorial
+selection; your job is to write it up, not to soften that bar. Publishing
+nothing is better than publishing noise, and that philosophy carries into the
+writing itself: cut anything that is decoration rather than signal.
 
-AUDIENCE: AI engineers, software and QA engineers, technical professionals,
-and curious non-experts - all reading the same three slides. Write so the
-engineer learns something and the non-expert is never lost. Assume no
-familiarity with model names, benchmarks or research terminology.
+AUDIENCE: AI engineers, software engineers, technical architects, engineering
+leaders, and tech founders. Write for someone who will stop scrolling only if
+the next line is worth their 30 seconds. Assume technical fluency - do not
+over-explain basics - but never assume familiarity with this specific story's
+details, since the audience has not read the source.
 
 ABSOLUTE RULES, in priority order:
 1. GROUNDING OF FACTS. Every FACT must be directly supported by the source
-   text given for that story. Never invent figures, dates, version numbers,
+   text given for this story. Never invent figures, dates, version numbers,
    pricing, availability, benchmark results, customer names or company
    relationships. If it is not in the text, it does not go on the slide.
 
@@ -56,113 +60,74 @@ ABSOLUTE RULES, in priority order:
    make its meaning clear from context in the same sentence.
    Bad:  "Sparse MoE routing improves throughput at longer context lengths."
    Good: "The model handles much longer documents without slowing down."
-4. NO HYPE. Never use "revolutionary", "game-changing", "breakthrough",
-   "insane", "breaking", or exclamation marks. State what happened.
+4. NO HYPE. Never use "revolutionary", "game-changing", "groundbreaking",
+   "breakthrough", "insane", "breaking", or exclamation marks. Avoid
+   buzzwords and marketing language generally. Be factual, concise, useful.
+   State what happened.
 5. PRESERVE UNCERTAINTY. If the source hedges, you hedge. Never upgrade a
    possibility into a fact.
 
-HEADLINES: HEADLINE_WORDS words maximum, ideally six. Active voice. It should
-read like an Instagram news headline, not a company press release.
+HEADLINE: HEADLINE_WORDS words maximum, ideally six. Active voice, third
+person. Never reuse the publisher's own framing.
 
-Banned in headlines unless genuinely unavoidable: announces, introduces,
-unveils, next-generation, cutting-edge, state-of-the-art, industry-leading,
-seamlessly, revolutionary, powerful, robust, our, we, and any product codename
-the reader will not recognise. Prefer short plain verbs: launches, releases,
-opens, adds, cuts, buys, blocks, open-sources.
-
-NEVER reuse the publisher's headline. Company blogs write from their own point
-of view ("Announcing our next-generation inference platform", "Introducing
-Project X", "Meet the new..."), which tells a reader nothing. Always rewrite
-into the third person, naming the company and saying what actually happened.
+Banned unless genuinely unavoidable: announces, introduces, unveils,
+next-generation, cutting-edge, state-of-the-art, industry-leading,
+seamlessly, revolutionary, powerful, robust, our, we, and any product
+codename the reader will not recognise. Prefer short plain verbs: launches,
+releases, opens, adds, cuts, buys, blocks, open-sources.
 
    BAD:  "Announcing our next-generation inference platform"
    GOOD: "Nvidia launches faster AI infrastructure"
-
    BAD:  "Introducing a faster, cheaper embedding model for retrieval"
    GOOD: "OpenAI releases cheaper embedding model"
 
-   BAD:  "Open-weights model family released with permissive licence"
-   GOOD: "Hugging Face open-sources model family"
-
-   BAD:  "NVIDIA: next-generation inference platform"
-   GOOD: "NVIDIA launches new inference platform"
-
-   BAD:  "OpenAI: faster, cheaper embedding model"
-   GOOD: "OpenAI releases cheaper embeddings"
-
-Structure: WHO did WHAT, and where possible why it matters. Never open with
-"Announcing", "Introducing", "Meet", "We", "Our", or a product codename the
-reader has never heard of. Prefer plain verbs: launches, releases, adds,
-opens, cuts, blocks, buys.
-
-TEASERS: 3-5 words, for the cover slide. A hook, not a summary - enough to
-make someone swipe, not enough to make reading the slide pointless.
-   "Faster chips from Nvidia"
-   "Cheaper OpenAI embeddings"
-   "Free open-weight models"
-
-BULLETS: at most MAX_BULLETS per story, one short sentence each,
-MAX_BULLET_CHARS characters maximum. Never restate the headline.
-
-The bullets answer "why should I care?". Aim for this shape:
-   bullet 1 - the concrete thing that changed
-   bullet 2 - who it affects and how
-   bullet 3 - the practical consequence
-
-   HEADLINE: "OpenAI releases cheaper embeddings"
-   BAD  (marketing echo):
-     - "The model supports 8192-token inputs."
-     - "It is available today in the API."
-     - "It matches the previous generation's retrieval quality."
-   GOOD (impact):
-     - "Runs at about a third of the previous cost."
-     - "Could reduce AI search and retrieval bills."
-     - "Makes it cheaper to build document search tools."
-
-Reach for the reader's world - cost, speed, effort, what becomes possible -
-rather than the company's feature list. A reader who stops after the bullets
-should still feel informed.
-
-WHY IT MATTERS: exactly one sentence per story, 95 characters maximum, plain
-English. It is the takeaway a reader repeats to a colleague - the consequence
-for someone building software, running a business, or learning AI. It must NOT
-restate a bullet; if it could be swapped with a bullet, it is not a takeaway.
-
-   "OpenAI runs GPT-5.6 up to 14x faster"
-   -> "AI assistants and voice agents can feel significantly more responsive."
-
-   "NVIDIA launches new inference platform"
-   -> "Lower inference costs could make AI applications cheaper to operate."
-
-   "Hugging Face open-sources model family"
-   -> "Developers can experiment with advanced models without proprietary APIs."
-
-Bullets are third person, always. Source text written by a company about
-itself says "we" and "our"; your version names the company or uses "the".
+WHAT HAPPENED: at most MAX_BULLETS bullets, one short sentence each,
+MAX_BULLET_CHARS characters maximum. The facts of the story - what actually
+happened, concretely. Never restate the headline. Third person always -
+source text written by a company about itself says "we"; your version names
+the company or uses "the".
    BAD:  "We are releasing a model that matches our previous quality."
    GOOD: "The new model matches the previous version's quality."
 
+WHY ENGINEERS SHOULD CARE: at most MAX_BULLETS bullets, one short sentence
+each, MAX_BULLET_CHARS characters maximum. NOT a restatement of "what
+happened" - this is the consequence for someone building, shipping, or
+buying software. Every bullet here should be completable as "Engineers should
+care because ...". If a bullet could swap places with a "what happened"
+bullet, it belongs in "what happened" instead, not here.
+   WHAT HAPPENED: "The new model runs inference at a third of the previous cost."
+   WHY CARE (BAD, just repeats the fact): "It is cheaper to run."
+   WHY CARE (GOOD, the actual consequence): "Makes high-volume production
+   use cases (search, chat, agents) meaningfully cheaper to operate at scale."
+
+TECHTALES TAKE: one to two sentences. This is YOUR original insight or
+prediction, written the way an experienced AI engineer would explain to a
+colleague why this actually matters beyond the headline - not a summary, not
+a restatement of the bullets above. Say something a reader could not get
+from the source article itself: an implication, a prediction, a "watch for X
+next", a comparison to how the industry has moved before. It must still
+follow the grounding rule - a prediction is clearly framed as your read on
+where this leads, not stated as a fact the source did not report.
+   BAD (just repeats the news): "This acquisition shows AI coding tools are
+   becoming valuable."
+   GOOD (an actual take): "Expect more infrastructure companies to buy
+   coding tools outright rather than integrate with them - owning the
+   developer's workflow is becoming as strategic as owning the compute."
+
+SPOKEN SCRIPT LINE: about SEG_WORDS words, natural spoken narration
+summarizing the story for a short video voiceover.
+
 Return ONLY valid JSON, no markdown fence:
 {
-  "cover_subtitle": "max 42 chars, e.g. '3 AI stories that matter today'",
-  "intro_line": "spoken opening for the video, about 14 words",
-  "stories": [
-    {"headline": "max HEADLINE_WORDS words, third person, never the publisher's own wording",
-     "teaser": "3-5 word hook for the cover slide",
-     "bullets": ["sentence", "sentence", "sentence"],
-     "why_it_matters": "ONE sentence, max 95 chars, the takeaway - never repeats a bullet",
-     "script_line": "spoken narration for THIS story only, about SEG_WORDS words"}
-  ],
-  "matters_professionals": "one sentence, max 105 chars, what today's news changes for someone building or testing software",
-  "matters_businesses": "one sentence, max 105 chars, what it changes for companies",
-  "matters_learners": "one sentence, max 105 chars, what someone learning AI should take from it",
-  "caption": "Instagram caption. A one-line summary, then the three headlines as bullets, then a short question inviting replies, then 8-12 relevant hashtags including #TechTales",
+  "headline": "max HEADLINE_WORDS words, third person, never the publisher's own wording",
+  "what_happened": ["sentence", "sentence", "sentence"],
+  "why_engineers_care": ["sentence", "sentence", "sentence"],
+  "techtales_take": "1-2 sentences, an original insight or prediction, not a repeat of the news",
+  "script_line": "spoken narration for the video, about SEG_WORDS words",
+  "caption": "Instagram caption: the headline, then 2-3 lines of the core fact and why it matters, then a short question inviting replies, then 8-12 relevant hashtags including #TechTales",
   "yt_title": "max 80 chars",
-  "yt_description": "one-line summary, then each story's source URL on its own line"
-}
-The "stories" array must have exactly the same number of entries, in the same
-order, as the stories given to you. The three "matters_" sentences describe
-today's stories collectively, not one each."""
+  "yt_description": "one-line summary, then the story's source URL"
+}"""
 
 
 # Used only when no model is available. Deliberately generic-but-true per
@@ -463,66 +428,93 @@ def _clip(text: str, limit: int) -> str:
     return (cut or text[:limit].rstrip()) + "…"
 
 
-def _fallback(stories: list[Story], settings: dict, date: str) -> Edition:
+def _fallback(story: Story, settings: dict, date: str) -> Edition:
     """Extractive copy, used when no API key is configured."""
     cfg = settings["summarize"]
-    for idx, s in enumerate(stories):
-        s.headline = _trim_words(
-            humanize_headline(s.title, s.source_label), cfg["max_headline_words"]
-        ).rstrip(" .,-:")
-        s.teaser = make_teaser(s.headline, s.source_label)
-        sentences = [
-            x.strip() for x in re.split(r"(?<=[.!?])\s+", s.lead.summary or s.title)
-            if x.strip()
-        ]
-        s.bullets = [
-            _clip(depersonalize(x, s.source_label), cfg["max_bullet_chars"])
-            for x in sentences[: cfg["max_bullets"]]
-        ]
-        s.body = " ".join(s.bullets)
-        s.script_line = f"{s.headline}. {s.body}"
-        # No model available: name the concrete consequence we can defend
-        # from the category alone, rather than inventing an impact claim.
-        s.why_it_matters = _fallback_why(s.category, idx)
+    story.headline = _trim_words(
+        humanize_headline(story.title, story.source_label), cfg["max_headline_words"]
+    ).rstrip(" .,-:")
+    story.teaser = make_teaser(story.headline, story.source_label)
+    sentences = [
+        x.strip() for x in re.split(r"(?<=[.!?])\s+", story.lead.summary or story.title)
+        if x.strip()
+    ]
+    story.bullets = [
+        _clip(depersonalize(x, story.source_label), cfg["max_bullet_chars"])
+        for x in sentences[: cfg["max_bullets"]]
+    ]
+    story.body = " ".join(story.bullets)
+    story.script_line = f"{story.headline}. {story.body}"
+    # No model available: name the concrete consequence we can defend from the
+    # category alone, rather than inventing an impact claim. Only one
+    # generic line is available without a model, so it fills both the legacy
+    # single-sentence field and the (single-entry) "why engineers care" list.
+    why = _fallback_why(story.category, 0)
+    story.why_it_matters = why
+    story.why_bullets = [why]
+    story.take = (
+        "No model available to generate an original take - review this one "
+        "manually before publishing."
+    )
 
     return Edition(
         date=date,
-        stories=stories,
+        stories=[story],
         intro="Today in AI",
-        outro=f"{len(stories)} AI stories that matter today",
-        intro_line=f"Here are today's {len(stories)} AI stories.",
-        matters_professionals="New tools and models change what you can ship this quarter.",
-        matters_businesses="Capability and cost curves keep moving; plans need revisiting.",
-        matters_learners="Follow the primary sources, not the commentary around them.",
-        caption="\n".join(f"- {s.headline} ({s.source_label})" for s in stories),
-        yt_title=f"AI News - {date}",
-        yt_description="\n".join(f"{s.headline}: {s.link}" for s in stories),
+        outro=story.teaser or story.headline,
+        intro_line=f"Today's signal: {story.headline}.",
+        caption=f"{story.headline}\n\n{story.body}",
+        yt_title=f"{story.headline} - {date}",
+        yt_description=f"{story.headline}: {story.link}",
     )
 
 
 def summarize(stories: list[Story], settings: dict, date: str | None = None) -> Edition:
+    """Write up the single story the editorial gate chose.
+
+    Only ever called with exactly one story in the new one-story-or-nothing
+    model - the editorial gate (aidaily.editorial) has already decided this
+    is the single thing worth publishing today. If more than one is passed
+    (e.g. a script calling this directly), only the first is written up; that
+    is almost certainly not what the caller wants, so it is logged loudly.
+    """
     date = date or datetime.now().strftime("%Y-%m-%d")
     cfg = settings["summarize"]
+
+    if not stories:
+        raise ValueError("summarize() called with no stories")
+    if len(stories) > 1:
+        log.warning(
+            "summarize() received %d stories but only writes up one - the "
+            "editorial gate should have narrowed this to a single story "
+            "before calling summarize(). Using the first and ignoring the rest.",
+            len(stories),
+        )
+    story = stories[0]
 
     api_key = env("ANTHROPIC_API_KEY")
     if not api_key:
         log.warning("ANTHROPIC_API_KEY not set - using extractive fallback copy")
-        return _fallback(stories, settings, date)
+        return _fallback(story, settings, date)
 
     import anthropic
 
-    seg_words = max(12, cfg["script_target_words"] // max(1, len(stories) + 1))
+    seg_words = max(12, cfg["script_target_words"])
     system = (
         SYSTEM.replace("HEADLINE_WORDS", str(cfg["max_headline_words"]))
         .replace("MAX_BULLETS", str(cfg["max_bullets"]))
         .replace("MAX_BULLET_CHARS", str(cfg["max_bullet_chars"]))
         .replace("SEG_WORDS", str(seg_words))
     )
-    user = "\n".join(_story_block(i, s) for i, s in enumerate(stories))
+    user = _story_block(0, story)
 
     client = anthropic.Anthropic(api_key=api_key)
+    # Real headroom, not the tightest budget that happens to fit an easy
+    # story: a truncated response fails to parse as JSON and silently falls
+    # back to the extractive writer even though the model itself was fine.
+    max_tokens = 4096
     resp = client.messages.create(
-        model=cfg["model"], max_tokens=3000, system=system,
+        model=cfg["model"], max_tokens=max_tokens, system=system,
         messages=[{"role": "user", "content": user}],
     )
     raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", resp.content[0].text.strip())
@@ -530,48 +522,52 @@ def summarize(stories: list[Story], settings: dict, date: str | None = None) -> 
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        log.error("model returned non-JSON, falling back to extractive copy")
-        return _fallback(stories, settings, date)
+        if resp.stop_reason == "max_tokens":
+            log.error(
+                "model response was truncated at max_tokens=%d before it "
+                "finished valid JSON - falling back to extractive copy. If "
+                "this recurs, raise max_tokens further.", max_tokens,
+            )
+        else:
+            log.error(
+                "model returned non-JSON (stop_reason=%s), falling back to "
+                "extractive copy", resp.stop_reason,
+            )
+        return _fallback(story, settings, date)
 
-    written = data.get("stories", [])
-    if len(written) != len(stories):
-        log.warning("model returned %d stories for %d inputs", len(written), len(stories))
+    story.headline = _trim_words(
+        data.get("headline") or humanize_headline(story.title, story.source_label),
+        cfg["max_headline_words"],
+    ).rstrip(" .,-:")
+    story.teaser = make_teaser(story.headline, story.source_label).rstrip(" .,-:")
 
-    for idx, (story, w) in enumerate(zip(stories, written)):
-        story.headline = _trim_words(
-            w.get("headline") or humanize_headline(story.title, story.source_label),
-            cfg["max_headline_words"],
-        ).rstrip(" .,-:")
-        story.teaser = (
-            w.get("teaser") or make_teaser(story.headline, story.source_label)
-        ).rstrip(" .,-:")
-        bullets = [b.strip() for b in (w.get("bullets") or []) if b and b.strip()]
-        story.bullets = [
-            _clip(b, cfg["max_bullet_chars"]) for b in bullets[: cfg["max_bullets"]]
-        ]
-        story.body = " ".join(story.bullets)
-        story.script_line = w.get("script_line") or f"{story.headline}. {story.body}"
-        story.why_it_matters = _clip(
-            w.get("why_it_matters") or _fallback_why(story.category, idx), 95
-        )
+    what = [b.strip() for b in (data.get("what_happened") or []) if b and b.strip()]
+    story.bullets = [_clip(b, cfg["max_bullet_chars"]) for b in what[: cfg["max_bullets"]]]
+    story.body = " ".join(story.bullets)
 
-    # Guarantee every source URL survives into the description.
+    why = [b.strip() for b in (data.get("why_engineers_care") or []) if b and b.strip()]
+    story.why_bullets = [_clip(b, cfg["max_bullet_chars"]) for b in why[: cfg["max_bullets"]]]
+    # Legacy single-line field, kept for anything (e.g. make_edition.py) that
+    # still reads it - the first "why engineers care" bullet is the closest
+    # single-sentence equivalent.
+    story.why_it_matters = _clip(
+        story.why_bullets[0] if story.why_bullets else _fallback_why(story.category, 0), 95
+    )
+
+    story.take = (data.get("techtales_take") or "").strip()
+    story.script_line = data.get("script_line") or f"{story.headline}. {story.body}"
+
     desc = data.get("yt_description", "")
-    for s in stories:
-        if s.link and s.link not in desc:
-            desc += f"\n{s.headline}: {s.link}"
+    if story.link and story.link not in desc:
+        desc += f"\n{story.headline}: {story.link}"
 
-    kept = stories[: len(written)] or stories
     return Edition(
         date=date,
-        stories=kept,
+        stories=[story],
         intro="Today in AI",
-        outro=data.get("cover_subtitle") or f"{len(kept)} AI stories that matter today",
-        intro_line=data.get("intro_line", "Here is today's AI news."),
-        matters_professionals=_clip(data.get("matters_professionals", ""), 105),
-        matters_businesses=_clip(data.get("matters_businesses", ""), 105),
-        matters_learners=_clip(data.get("matters_learners", ""), 105),
+        outro=story.teaser or story.headline,
+        intro_line=f"Today's signal: {story.headline}.",
         caption=data.get("caption", ""),
-        yt_title=data.get("yt_title", f"AI News - {date}"),
+        yt_title=data.get("yt_title") or f"{story.headline} - {date}",
         yt_description=desc,
     )
