@@ -45,6 +45,17 @@ _BAD_IMAGE_HINTS = (
 )
 
 
+# Sites that serve one static, site-wide image for every single page (a
+# repository's logo, not per-item art). An "official image" lookup on these
+# always returns the same generic picture for every story - arXiv abstract
+# pages all share the exact same og:image (arxiv-logo-fb.png). This is
+# supposed to be caught by is_generic_share_card(), but that only works by
+# comparing against the *homepage's* og:image - and arxiv.org's homepage sets
+# no og:image at all, so the generic logo slips through undetected. Skip
+# these domains outright rather than relying on a check that can't see them.
+_NO_ARTICLE_IMAGE_DOMAINS = {"arxiv.org"}
+
+
 def _domain(url: str) -> str:
     try:
         host = urlparse(url).netloc.lower()
@@ -400,7 +411,7 @@ def attach_images(stories: list[Story], settings: dict, out_dir: Path) -> None:
             # Try every clustered source, best-attributed first: if the primary
             # announcement has no image, the press write-up usually does.
             for item in sorted(story.items, key=lambda i: i.source_tier):
-                if not item.link:
+                if not item.link or _domain(item.link) in _NO_ARTICLE_IMAGE_DOMAINS:
                     continue
                 for candidate in find_article_images(item.link, timeout):
                     # A house share-card is worse than the company's own logo:
@@ -441,6 +452,15 @@ def attach_images(stories: list[Story], settings: dict, out_dir: Path) -> None:
             story.company, brand_domain = detected
         else:
             brand_domain = _domain(story.link)
+
+        # A bare fallback to the *article's own* domain is only useful when
+        # that domain is an actual company's site. For a repository like
+        # arXiv it just re-fetches the same site-wide logo we already
+        # rejected above (via a different code path) - skip straight to the
+        # generated panel instead of showing that logo a second way.
+        if brand_domain in _NO_ARTICLE_IMAGE_DOMAINS:
+            brand_domain = None
+
         log.info("story %d: brand imagery from %s", idx + 1, brand_domain or "unknown")
 
         # --- 2. the company's own hero / product image ----------------------
