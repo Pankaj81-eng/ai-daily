@@ -2,9 +2,9 @@ name: AI Daily
 
 on:
   schedule:
-    # 06:15 UTC (07:15 UK summer time / BST). GitHub's scheduler drifts under
-    # load, so treat this as "shortly after 06:15", not a hard guarantee.
-    - cron: "15 6 * * *"
+    # 05:00 UTC. GitHub's scheduler drifts under load, so treat this as
+    # "shortly after 05:00", not a hard guarantee.
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
