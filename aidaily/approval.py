@@ -41,7 +41,7 @@ def _call(token: str, method: str, files=None, **payload) -> dict:
 
 
 def _digest(edition: Edition) -> str:
-    lines = [f"*AI Daily - {edition.date}*", ""]
+    lines = [f"*TechTales - {edition.date}*", ""]
     for i, s in enumerate(edition.stories, 1):
         srcs = ", ".join(s.sources[:3])
         lines.append(f"{i}. *{s.headline}*")

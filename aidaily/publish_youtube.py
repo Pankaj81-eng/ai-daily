@@ -44,7 +44,7 @@ def _client(client_id: str, client_secret: str, refresh_token: str):
 
 def _tags(edition: Edition) -> list[str]:
     base = ["AI", "AI news", "artificial intelligence", "machine learning",
-            "tech news", "AI daily", "LLM", "shorts"]
+            "tech news", "TechTales", "LLM", "shorts"]
     return base[:15]
 
 
