@@ -15,8 +15,13 @@ sources:
     url: https://openai.com/blog/rss.xml
     tier: 1
     tags: [lab]
+  # Anthropic publishes no official RSS feed. This is a community-maintained
+  # mirror (github.com/taobojlen/anthropic-rss-feed) that republishes
+  # anthropic.com/news verbatim via a scheduled GitHub Action - the content is
+  # still Anthropic's own words, just proxied through an unofficial pipe that
+  # could break without notice. Revisit if it ever goes stale.
   - name: Anthropic News
-    url: https://www.anthropic.com/news/rss.xml
+    url: https://raw.githubusercontent.com/taobojlen/anthropic-rss-feed/main/anthropic_news_rss.xml
     tier: 1
     tags: [lab]
   - name: Google DeepMind Blog
@@ -27,16 +32,21 @@ sources:
     url: https://research.google/blog/rss/
     tier: 1
     tags: [lab]
-  - name: Meta AI Blog
-    url: https://ai.meta.com/blog/rss/
+  # ai.meta.com/blog has no RSS feed at all (checked directly - no <link
+  # rel="alternate"> tag in the page). Meta's corporate Newsroom feed does
+  # exist and is officially theirs, but it is NOT AI-specific - it carries
+  # general PR, policy, and product news too. Tagged "press" (despite tier 1)
+  # so the topic-keyword filter still applies and non-AI items get dropped.
+  - name: Meta Newsroom
+    url: https://about.fb.com/news/feed/
     tier: 1
-    tags: [lab]
+    tags: [lab, press]
   - name: Microsoft Research Blog
     url: https://www.microsoft.com/en-us/research/feed/
     tier: 1
     tags: [lab]
   - name: Microsoft AI Blog
-    url: https://blogs.microsoft.com/ai/feed/
+    url: https://news.microsoft.com/source/topics/ai/feed/
     tier: 1
     tags: [lab]
   - name: Cohere Blog
@@ -52,7 +62,7 @@ sources:
     tier: 1
     tags: [openweights]
   - name: Mistral AI News
-    url: https://mistral.ai/news/feed.xml
+    url: https://www.mistral.ai/news/rss
     tier: 1
     tags: [lab]
   - name: AWS Machine Learning Blog
@@ -89,10 +99,9 @@ sources:
     url: https://www.wired.com/feed/tag/ai/latest/rss
     tier: 2
     tags: [press]
-  - name: Reuters Technology
-    url: https://www.reutersagency.com/feed/?best-topics=tech
-    tier: 2
-    tags: [wire]
+  # Reuters discontinued official RSS feeds entirely years ago - the only
+  # replacements available are unofficial third-party feed generators, which
+  # don't meet the "genuine source" bar. Removed rather than faked.
 
   # ---------------- Tier 3: signal only, never publishable alone ------------
   - name: Hacker News (AI front page)
