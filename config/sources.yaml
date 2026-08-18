@@ -32,6 +32,14 @@ sources:
     url: https://research.google/blog/rss/
     tier: 1
     tags: [lab]
+  # research.google and deepmind.google are RESEARCH blogs - actual product
+  # news (Gemini model releases, Workspace AI features, etc.) is posted here
+  # instead. Confirmed missing this after Gemini 3.7 Flash's Aug-13 launch
+  # post turned out to live only on this blog, not either research feed.
+  - name: Google AI Blog
+    url: https://blog.google/technology/ai/rss/
+    tier: 1
+    tags: [lab]
   # ai.meta.com/blog has no RSS feed at all (checked directly - no <link
   # rel="alternate"> tag in the page). Meta's corporate Newsroom feed does
   # exist and is officially theirs, but it is NOT AI-specific - it carries
