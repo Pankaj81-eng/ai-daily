@@ -33,7 +33,12 @@ brand:
   font_display: "Inter"             # set to e.g. "Space Grotesk" for headlines
 
 ingest:
-  lookback_hours: 30
+  # 48h rather than 30h: the freshness-scoring bonus in verify.py's ranking
+  # formula (3.0 - age_h/8.0) already fully decays to zero past 24h, so
+  # widening this doesn't change how a story is scored once seen - it only
+  # stops dropping real 30-48h-old stories before they're ever considered,
+  # which cost us the Stripe/OpenRouter acquisition story in practice.
+  lookback_hours: 48
   max_items_per_source: 25
   request_timeout_s: 20
   topic_keywords:
