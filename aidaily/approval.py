@@ -79,7 +79,7 @@ def send_preview(
     if video and video.exists():
         with video.open("rb") as fh:
             _call(token, "sendVideo", chat_id=chat_id,
-                  caption="Reel / Short preview",
+                  caption="YouTube video preview",
                   files={"video": (video.name, fh, "video/mp4")})
 
     keyboard = {

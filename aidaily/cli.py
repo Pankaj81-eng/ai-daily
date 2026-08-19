@@ -125,7 +125,14 @@ def build(
     video = None
     if settings["video"].get("enabled", True):
         try:
-            video = render_video.render(edition, settings, out_dir)
+            # "slideshow" (default): the same 4 carousel images, no spoken
+            # narration - see aidaily.render_video.render_slideshow(). The
+            # original AI-voiced short is still there, just not the default;
+            # switch settings.video.style back to "narrated" to use it again.
+            if settings["video"].get("style", "slideshow") == "narrated":
+                video = render_video.render(edition, settings, out_dir)
+            else:
+                video = render_video.render_slideshow(edition, settings, out_dir, slides)
         except Exception as exc:  # noqa: BLE001 - a failed video must not kill the carousel
             log.error("video render failed, continuing with carousel only: %s", exc)
 

@@ -199,13 +199,29 @@ carousel:
 
 video:
   enabled: true                # set false if you only want the carousel
-  width: 1080
+  # "slideshow"  the 4 carousel slides, held static (with a gentle zoom), no
+  #              spoken narration - optionally with music (see `music` below).
+  #              Reuses the exact images already rendered for Instagram, so
+  #              there is no extra content work and both platforms show the
+  #              same thing.
+  # "narrated"   the original AI-voiced short (separate frame template, TTS
+  #              per segment). Kept working, just not the default - switch
+  #              back to this by changing style alone, nothing else to undo.
+  style: "slideshow"
+  slide_duration_s: 4.5        # slideshow style only: seconds each slide holds
+  width: 1080                  # narrated style only - slideshow uses carousel.width/height
   height: 1920
   fps: 30
   max_duration_s: 58
   tts_engine: "edge"
   tts_voice: "en-US-AriaNeural"    # try en-IN-NeerjaNeural for an Indian accent
   tts_rate: "+8%"
+  # Local path to a royalty-free audio file for the slideshow's background
+  # track (looped/trimmed to fit, fades out at the end). Null = silent video -
+  # still fully valid, no narration either way. YouTube's own Audio Library
+  # (studio.youtube.com > Audio Library, or youtube.com/audiolibrary) is the
+  # safe source for a track explicitly licensed for use in YouTube uploads -
+  # download one, drop it at e.g. assets/bg_music.mp3, and point this at it.
   music: null
 
 publish:

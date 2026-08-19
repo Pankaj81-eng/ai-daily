@@ -262,3 +262,115 @@ def render(edition: Edition, settings: dict, out_dir: Path) -> Path:
 
     log.info("video rendered: %s (%.1fs)", out, _duration(out))
     return out
+
+
+def render_slideshow(
+    edition: Edition, settings: dict, out_dir: Path, slides: list[Path]
+) -> Path:
+    """Produce out_dir/slideshow.mp4 from the already-rendered carousel slides.
+
+    The default video style (settings.video.style == "slideshow"): the exact
+    same 4 images already published to Instagram, held static with a gentle
+    zoom for a touch of motion, no spoken narration at all. Optionally mixes
+    in a background music track (settings.video.music, looped/trimmed to fit
+    with a fade-out); produces a silent video otherwise - silence is not an
+    error state here, it is a fully valid result on its own.
+
+    Deliberately does not touch `edition` beyond using it for logging - unlike
+    render(), there is no per-story narration to derive, since the whole
+    point of this style is "the same content as Instagram, without a voice".
+    """
+    _require_ffmpeg()
+    vcfg = settings["video"]
+    ccfg = settings["carousel"]
+    out_dir = out_dir.resolve()
+    work = out_dir / "video"
+    work.mkdir(parents=True, exist_ok=True)
+
+    if not slides:
+        raise ValueError("render_slideshow() called with no slides")
+
+    w, h = ccfg["width"], ccfg["height"]
+    fps = vcfg["fps"]
+    per_slide = max(1.0, float(vcfg.get("slide_duration_s", 4.5)))
+
+    # ---- 1. one silent clip per slide, with a slow zoom for a touch of motion
+    clips: list[Path] = []
+    for i, img in enumerate(slides):
+        clip = work / f"slide_clip_{i:02d}.mp4"
+        frames = max(1, int(round(per_slide * fps)))
+        # Same zoompan technique as render() above, just slower (this frame
+        # holds much longer than a narrated segment does) and parameterised
+        # on the carousel's own dimensions rather than the vertical short's.
+        vf = (
+            f"scale={int(w * 1.5)}:{int(h * 1.5)},"
+            f"zoompan=z='min(zoom+0.0004,1.08)':d={frames}"
+            f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+            f":s={w}x{h}:fps={fps},"
+            f"format=yuv420p"
+        )
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-loop", "1", "-i", str(img),
+             "-vf", vf, "-t", f"{per_slide:.3f}",
+             "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+             "-r", str(fps), "-pix_fmt", "yuv420p",
+             str(clip)],
+            check=True,
+        )
+        clips.append(clip)
+
+    # ---- 2. concat, silent --------------------------------------------------
+    listfile = work / "concat.txt"
+    listfile.write_text("".join(f"file '{c.name}'\n" for c in clips))
+    silent = work / "silent.mp4"
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
+         "-i", str(listfile), "-c", "copy", str(silent)],
+        check=True, cwd=work,
+    )
+    total_s = per_slide * len(clips)
+
+    # ---- 3. optional background music, silent otherwise --------------------
+    out = out_dir / "slideshow.mp4"
+    music = vcfg.get("music")
+    if music and Path(music).exists():
+        music_path = Path(music).resolve()
+        fade_start = max(0.0, total_s - 1.5)
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error",
+             "-i", str(silent), "-stream_loop", "-1", "-i", str(music_path),
+             "-filter_complex",
+             f"[1:a]volume=0.35,afade=t=out:st={fade_start:.3f}:d=1.5[aout]",
+             "-map", "0:v", "-map", "[aout]",
+             "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+             "-shortest", "-movflags", "+faststart",
+             str(out)],
+            check=True,
+        )
+        log.info("slideshow rendered with background music: %s", out)
+    elif music:
+        log.warning(
+            "video.music is set to %r but that file doesn't exist - "
+            "rendering silent instead", music,
+        )
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", str(silent),
+             "-c", "copy", "-movflags", "+faststart", str(out)],
+            check=True,
+        )
+    else:
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", str(silent),
+             "-c", "copy", "-movflags", "+faststart", str(out)],
+            check=True,
+        )
+        log.info(
+            "slideshow rendered silent - set video.music in settings.yaml "
+            "for a background track (not an error, just no track configured)"
+        )
+
+    log.info(
+        "slideshow rendered: %s (%.1fs, %d slides, no narration) for %s",
+        out, total_s, len(clips), edition.date,
+    )
+    return out
