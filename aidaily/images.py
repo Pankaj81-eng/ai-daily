@@ -45,19 +45,26 @@ _BAD_IMAGE_HINTS = (
 )
 
 
-# Sites whose og:image is a templated graphic, not real per-article content -
-# a repository logo, or a generated "social card" with the headline text
-# rendered onto a fixed background. Both fail the same way: they are not
-# photography or a diagram of the actual thing being reported on, and a
-# social card additionally often bakes in a fake, non-clickable CTA
-# ("Read the blog post >") that is actively misleading once it is no longer
-# sitting next to a real link - confirmed on aws.amazon.com/blogs/machine-
-# learning by comparing two unrelated articles' og:images: identical layout,
-# only the headline text differs. is_generic_share_card() can't catch either
-# case (it only compares against the *homepage's* og:image, and arxiv.org's
-# homepage sets no og:image at all; AWS's per-article card isn't identical
-# across articles, just templated). Skip these domains outright.
-_NO_ARTICLE_IMAGE_DOMAINS = {"arxiv.org", "aws.amazon.com"}
+# Sites that serve one static, site-wide image for every single page (a
+# repository's logo, not per-item art). An "official image" lookup on these
+# always returns the same generic picture for every story - arXiv abstract
+# pages all share the exact same og:image (arxiv-logo-fb.png). This is
+# supposed to be caught by is_generic_share_card(), but that only works by
+# comparing against the *homepage's* og:image - and arxiv.org's homepage sets
+# no og:image at all, so the generic logo slips through undetected. Skip
+# these domains outright rather than relying on a check that can't see them.
+#
+# aws.amazon.com/blogs/machine-learning was deliberately NOT added here,
+# despite a real, confirmed issue: its per-article og:image is a templated
+# card that bakes in a non-clickable "Read the blog post >" prompt (fixed
+# layout, only the headline text differs between articles). Blocking it was
+# tried and reverted - the only fallback available (a generic company
+# hero/logo image, unrelated to the specific story) was judged worse than
+# keeping the templated card. A safe fix would need to detect where the
+# headline text ends per-image (it varies with headline length) before
+# cropping the CTA out, which needs OCR/vision, not a fixed pixel offset -
+# revisit if that becomes worth the added cost/complexity.
+_NO_ARTICLE_IMAGE_DOMAINS = {"arxiv.org"}
 
 
 def _domain(url: str) -> str:
