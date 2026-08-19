@@ -124,7 +124,7 @@ Return ONLY valid JSON, no markdown fence:
   "why_engineers_care": ["sentence", "sentence", "sentence"],
   "techtales_take": "1-2 sentences, an original insight or prediction, not a repeat of the news",
   "script_line": "spoken narration for the video, about SEG_WORDS words",
-  "caption": "Instagram caption: the headline, then 2-3 lines of the core fact and why it matters, then a short question inviting replies, then 8-12 relevant hashtags including #TechTales",
+  "caption": "Instagram caption: the headline, then 2-3 lines of the core fact and why it matters, then a short question inviting replies, then the line '@techtalesengineering' on its own (an @mention, not a hashtag - this is the only part of the caption that links straight to the account, so it must appear literally as written), then 8-12 relevant hashtags including #TechTales",
   "yt_title": "max 80 chars",
   "yt_description": "one-line summary, then the story's source URL"
 }"""
@@ -463,7 +463,7 @@ def _fallback(story: Story, settings: dict, date: str) -> Edition:
         intro="Today in AI",
         outro=story.teaser or story.headline,
         intro_line=f"Today's signal: {story.headline}.",
-        caption=f"{story.headline}\n\n{story.body}",
+        caption=f"{story.headline}\n\n{story.body}\n\n@techtalesengineering",
         yt_title=f"{story.headline} - {date}",
         yt_description=f"{story.headline}: {story.link}",
     )
