@@ -333,8 +333,15 @@ def render_slideshow(
     # ---- 3. optional background music, silent otherwise --------------------
     out = out_dir / "slideshow.mp4"
     music = vcfg.get("music")
-    if music and Path(music).exists():
-        music_path = Path(music).resolve()
+    # Relative paths (e.g. "assets/bg_music.mp3") are resolved against the
+    # repo root, not the process's cwd - same convention render_carousel.py
+    # uses for the logo, so this works the same whether invoked from the repo
+    # root (GitHub Actions, normal local use) or anywhere else.
+    music_path = None
+    if music:
+        p = Path(music)
+        music_path = p if p.is_absolute() else ROOT / p
+    if music_path and music_path.exists():
         fade_start = max(0.0, total_s - 1.5)
         subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error",

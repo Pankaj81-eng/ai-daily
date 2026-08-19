@@ -222,7 +222,11 @@ video:
   # (studio.youtube.com > Audio Library, or youtube.com/audiolibrary) is the
   # safe source for a track explicitly licensed for use in YouTube uploads -
   # download one, drop it at e.g. assets/bg_music.mp3, and point this at it.
-  music: null
+  # "Technology Corporate" by PaulYudin, Pixabay Content License (free for
+  # commercial use incl. YouTube, no attribution required). Same track every
+  # day, deliberately - one consistent, recognisable bed rather than picking
+  # something new per story.
+  music: "assets/bg_music.mp3"
 
 publish:
   instagram:
