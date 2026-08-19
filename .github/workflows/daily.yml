@@ -40,15 +40,21 @@ jobs:
           cache: pip
 
       - name: Install system packages
-        # This step hung indefinitely twice in a row (apt-get update never
-        # erroring, never completing) - a known GitHub-hosted-runner issue
-        # where apt tries a slow/unresponsive IPv6 mirror first. Force IPv4
-        # and give apt its own retry/timeout policy so a bad mirror fails
-        # fast and retries, rather than hanging. The step-level timeout is a
-        # hard backstop so a hang costs 5 minutes, not the full job budget.
+        # This step hung with ZERO output for the full 5-minute timeout on
+        # three consecutive attempts - not a slow mirror (that would at
+        # least show partial download progress), but the actual signature of
+        # a well-known GitHub-hosted-runner issue: Ubuntu's apt-daily.timer
+        # runs an automatic background update right after the VM boots and
+        # holds the dpkg/apt lock, so any apt-get call early in a job just
+        # blocks silently waiting for it. Stop those timers and wait for the
+        # lock to clear before touching apt at all. The step-level timeout
+        # stays as a hard backstop either way.
         timeout-minutes: 5
         run: |
-          sudo apt-get update -qq -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=15
+          sudo systemctl stop apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || true
+          sudo systemctl kill --kill-who=all apt-daily.service apt-daily-upgrade.service 2>/dev/null || true
+          timeout 60 bash -c 'while sudo fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock >/dev/null 2>&1; do sleep 2; done' || true
+          sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg espeak-ng
 
       - name: Install Python dependencies
