@@ -40,8 +40,15 @@ jobs:
           cache: pip
 
       - name: Install system packages
+        # This step hung indefinitely twice in a row (apt-get update never
+        # erroring, never completing) - a known GitHub-hosted-runner issue
+        # where apt tries a slow/unresponsive IPv6 mirror first. Force IPv4
+        # and give apt its own retry/timeout policy so a bad mirror fails
+        # fast and retries, rather than hanging. The step-level timeout is a
+        # hard backstop so a hang costs 5 minutes, not the full job budget.
+        timeout-minutes: 5
         run: |
-          sudo apt-get update -qq
+          sudo apt-get update -qq -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=15
           sudo apt-get install -y -qq ffmpeg espeak-ng
 
       - name: Install Python dependencies
