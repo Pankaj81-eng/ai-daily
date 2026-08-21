@@ -5,5 +5,12 @@
 "headline": "AWS Bedrock adds GPT-5.6 cross-region routing",
 "company": "",
 "category": "product_launch"
+},
+{
+"ts": 1787305417.3831336,
+"date": "2026-08-21",
+"headline": "OpenAI offers zero data retention for API customers",
+"company": "",
+"category": "tool_release"
 }
 ]
