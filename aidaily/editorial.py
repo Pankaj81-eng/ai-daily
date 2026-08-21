@@ -87,6 +87,15 @@ engineering team? Would it still matter in 30 days? Can a reader act on it?
 Is it more signal than noise? If any answer is no for your top candidate,
 publish nothing instead.
 
+ALREADY COVERED: you will be shown what TechTales actually published over
+the last two weeks (headline, date, company). A candidate does not need an
+identical URL to count as already covered - a different article about the
+same underlying feature, product, or event (a follow-up post, a "part 2",
+the same launch covered by a second outlet) is still the same story to a
+reader who already saw it. If a candidate is substantively a rehash or
+minor extension of something already published, reject it regardless of
+its score, and say so in that candidate's reasoning.
+
 Score every candidate you are given, in the order given, even the ones you
 will reject - explain briefly why each one does or does not clear the bar.
 Then decide: if the top-scoring candidate is >= 8 average AND passes every
@@ -123,11 +132,26 @@ def _candidate_block(idx: int, story: Story) -> str:
     )
 
 
-def select_story(candidates: list[Story], settings: dict) -> Story | None:
+def _recent_block(recent_published: list[dict]) -> str:
+    if not recent_published:
+        return "ALREADY COVERED (last 14 days): nothing - this is a fresh start.\n"
+    lines = [f"ALREADY COVERED (last 14 days, oldest first, {len(recent_published)} stories):"]
+    for e in recent_published:
+        company = f" [{e['company']}]" if e.get("company") else ""
+        lines.append(f"  {e['date']}: {e['headline']}{company}")
+    return "\n".join(lines) + "\n"
+
+
+def select_story(
+    candidates: list[Story], settings: dict, recent_published: list[dict] | None = None,
+) -> Story | None:
     """The single story worth publishing today, or None.
 
     None is a normal, frequent, correct result - it means "no newsletter
-    today", not that anything went wrong.
+    today", not that anything went wrong. `recent_published` (from
+    aidaily.state.PublishedLog) lets the model recognise a same-theme rehash
+    even when the specific article/URL is new - see the ALREADY COVERED rule
+    in SYSTEM.
     """
     if not candidates:
         return None
@@ -153,7 +177,11 @@ def select_story(candidates: list[Story], settings: dict) -> Story | None:
 
     import anthropic
 
-    user = "\n".join(_candidate_block(i, s) for i, s in enumerate(candidates))
+    user = (
+        _recent_block(recent_published or [])
+        + "\n"
+        + "\n".join(_candidate_block(i, s) for i, s in enumerate(candidates))
+    )
     client = anthropic.Anthropic(api_key=api_key)
     resp = client.messages.create(
         model=settings["summarize"]["model"], max_tokens=4096, system=SYSTEM,

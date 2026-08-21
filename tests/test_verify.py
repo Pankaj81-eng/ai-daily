@@ -479,3 +479,68 @@ def test_srcset_picks_the_largest_image():
 
 def test_srcset_handles_entries_without_widths():
     assert _srcset_largest("only.jpg") == "only.jpg"
+
+
+# --------------------------------------------------------------------------
+# editorial pool visibility + "already covered" rehash detection
+# --------------------------------------------------------------------------
+
+def test_top_candidates_does_not_silently_cap_at_eight():
+    """Regression: top_candidates() used to hard-cap at 8 by default,
+    contradicting its own docstring ("does not cap... needs the real ranked
+    pool"). A prolific source could fill every visible slot on the crude
+    pre-LLM score below, hiding a bigger story from a quieter source past
+    position 8. The editorial LLM gate must see everything verify.py passed,
+    up to the generous settings.verify.editorial_pool_size ceiling."""
+    class NoSeen:
+        def has(self, uid):
+            return False
+
+    stories = []
+    for i in range(15):
+        s = Story(items=[_item(f"Story number {i}", "TechCrunch AI", 2,
+                                link=f"https://example.com/{i}")])
+        s.score = float(i)  # distinct, ascending
+        stories.append(s)
+
+    got = verify.top_candidates(stories, NoSeen())
+    assert len(got) == 15, "default limit must not silently trim a normal-sized pool"
+    # still genuinely ranked, highest score first
+    assert got[0].score == 14.0
+
+
+def test_published_log_roundtrip_and_recent_ordering():
+    import tempfile
+    from pathlib import Path as P
+    from aidaily.state import PublishedLog
+
+    with tempfile.TemporaryDirectory() as d:
+        path = P(d) / "published_log.json"
+        log1 = PublishedLog(path)
+        log1.add("2026-08-19", "AWS lets AI agents make payments", "Amazon", "product_launch")
+        log1.add("2026-08-20", "Gemini 3.7 Flash launches", "Google", "model_release")
+        log1.save()
+
+        log2 = PublishedLog(path)  # fresh instance, reloaded from disk
+        recent = log2.recent()
+        assert [e["headline"] for e in recent] == [
+            "AWS lets AI agents make payments", "Gemini 3.7 Flash launches",
+        ]
+        assert recent[0]["company"] == "Amazon"
+
+
+def test_editorial_recent_block_mentions_past_headlines():
+    from aidaily.editorial import _recent_block
+
+    entries = [{"date": "2026-08-19", "headline": "AWS lets AI agents make payments",
+                "company": "Amazon", "category": "product_launch"}]
+    block = _recent_block(entries)
+    assert "AWS lets AI agents make payments" in block
+    assert "2026-08-19" in block
+
+
+def test_editorial_recent_block_empty_is_explicit_not_blank():
+    from aidaily.editorial import _recent_block
+
+    block = _recent_block([])
+    assert "nothing" in block.lower()

@@ -78,6 +78,19 @@ verify:
   tier3_min_corroboration: 2
   cluster_similarity: 0.55
 
+  # How many verified-but-unpublished stories the editorial LLM gate gets to
+  # see and score each day. This used to be silently hard-capped at 8 inside
+  # top_candidates() itself (contradicting that function's own docstring,
+  # which says it should NOT trim the pool) - the cap was ranking candidates
+  # by a crude pre-LLM heuristic (tier + freshness + category-keyword match,
+  # not real importance) before the LLM ever saw them, so a prolific but
+  # incremental source (repeatedly AWS's blog, 3 days running) could occupy
+  # every visible slot while a bigger story from a quieter source sat unseen
+  # at position #9+. Set generously high - a single LLM call easily handles
+  # this many short candidate summaries, so there's little reason to trim
+  # before the judgment step that's actually supposed to decide.
+  editorial_pool_size: 40
+
   # HARD REJECT. Applied to tier-2 and tier-3 only, because a company
   # announcing its own product never writes "reportedly". Any story whose
   # headline contains one of these is dropped outright, not merely downranked.

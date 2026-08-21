@@ -21,7 +21,7 @@ from . import (
 )
 from .config import OUT_DIR, SECRETS, env, load_settings, load_sources
 from .models import Edition
-from .state import SeenStore
+from .state import PublishedLog, SeenStore
 
 log = logging.getLogger("aidaily")
 
@@ -89,11 +89,13 @@ def build(
     verified = verify.verify(stories, settings, primaries)
 
     seen = SeenStore()
-    candidates = verify.top_candidates(verified, seen)
+    candidates = verify.top_candidates(
+        verified, seen, limit=settings["verify"].get("editorial_pool_size", 40)
+    )
     if not candidates:
         raise NoNewsletterToday("Nothing new passed verification today.")
 
-    chosen = editorial.select_story(candidates, settings)
+    chosen = editorial.select_story(candidates, settings, PublishedLog().recent())
     if chosen is None:
         raise NoNewsletterToday(
             "Editorial gate: no candidate cleared the bar today - "
@@ -221,9 +223,12 @@ def cmd_run(args: argparse.Namespace) -> int:
     # Only remember stories that actually went out.
     if any(k in results for k in ("carousel", "reel", "youtube")):
         seen = SeenStore()
+        published_log = PublishedLog()
         for story in edition.stories:
             seen.add_many([i.uid for i in story.items])
+            published_log.add(date, story.headline, story.company, story.category)
         seen.save()
+        published_log.save()
 
     (out_dir / "results.json").write_text(json.dumps(results, indent=2))
     log.info("results: %s", json.dumps(results, indent=2))

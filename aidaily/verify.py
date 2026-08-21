@@ -317,14 +317,20 @@ def verify(stories: list[Story], settings: dict, primaries: set[str]) -> list[St
     return kept
 
 
-def top_candidates(stories: list[Story], seen, limit: int = 8) -> list[Story]:
+def top_candidates(stories: list[Story], seen, limit: int = 40) -> list[Story]:
     """Ranked, not-yet-published candidates for the editorial gate.
 
     Unlike select(), this does not cap to a target story count or apply
     per-source diversity - aidaily.editorial decides whether ANY of these is
     worth publishing at all (including "none of them"), so it needs the real
     ranked pool of everything that passed verification, not a pre-trimmed
-    one built for filling a fixed number of carousel slides.
+    one built for filling a fixed number of carousel slides. `limit` exists
+    only as a sanity ceiling against a pathological day with hundreds of
+    verified stories - see settings.verify.editorial_pool_size, which is
+    what cli.py actually passes; do not lower this back toward "a handful"
+    to save tokens, that was the exact bug this replaced (a prolific but
+    incremental source could fill every visible slot on the crude pre-LLM
+    ranking below, hiding a bigger story from a quieter source at #9+).
     """
     fresh = [s for s in stories if not any(seen.has(i.uid) for i in s.items)]
     ranked = sorted(fresh, key=lambda s: s.score, reverse=True)
