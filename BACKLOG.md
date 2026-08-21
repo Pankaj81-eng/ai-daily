@@ -45,6 +45,25 @@ the line) once it's actually fixed and committed.
   worth understanding why it happens (extra prose wrapping around the JSON
   block?) if it starts happening often.
 
+## Deferred features
+
+- **Phase 3 of the Aug 2026 signal-expansion plan: tier-3 web verification.**
+  Original 4-point plan (relax tier-3 sources, broaden scope, allow 2-3
+  stories, recalibrate audience) was built as 3 phases - Phase 1 (scope +
+  audience) and Phase 2 (multi-story, 0-3 stories) both shipped and are
+  live. Phase 3 - letting a tier-3 source (Ben's Bites/TLDR/Rundown) publish
+  alone if a live web search independently confirms the claim, via a new
+  Gemini API key kept separate from the Anthropic editorial key - was
+  deliberately held back. Reasoning: Phases 1+2 address the actual root
+  cause (pool visibility + narrow scope + rigid one-story format), and
+  TLDR/Rundown/Ben's Bites are professionally curated already - a story
+  significant enough to matter almost always also gets tier-1/2 pickup
+  within the 48h window anyway. A story that's *only* ever mentioned by one
+  curator and nothing else in 48h is a genuine edge case, not the main gap.
+  Revisit only if a specific, recurring pattern shows up (a tier-3-only
+  story that should have qualified keeps getting missed) - not as a
+  default next step. May turn out to never be needed.
+
 ## Maintenance
 
 - **Dead RSS feeds** — these return 404/410 every run and need fixing or
