@@ -55,6 +55,22 @@ the line) once it's actually fixed and committed.
   story that should have qualified keeps getting missed) - not as a
   default next step. May turn out to never be needed.
 
+- **Make the GitHub repo private (blocked on switching asset hosting off
+  GitHub Releases).** Repo is public today because `ASSET_HOST=github_release`
+  needs a public repo - GitHub only serves release assets over an
+  unauthenticated URL (which Instagram/YouTube's fetch step requires) on
+  public repos. The code already has a ready-to-use alternative:
+  `ASSET_HOST=s3`, which works with any S3-compatible bucket, including
+  Cloudflare R2. Checked R2's actual pricing: 10GB storage + 1M writes +
+  10M reads per month free, zero egress fees, forever - at this project's
+  real usage (one publish/day at most, a few small images + one video) that
+  free tier would take well over a year to approach even without ever
+  deleting old assets. Not a cost concern if picked up. Deliberately not
+  done yet - not because of any blocker, just not important enough right
+  now. To do it: create an R2 bucket + API credentials, add them as new
+  secrets, switch `ASSET_HOST` to `s3` in `daily.yml`, verify a real
+  publish still works, then flip the repo to Private on GitHub.
+
 ## Maintenance
 
 - **GitHub Actions using deprecated Node 20** — `actions/checkout@v4`,
