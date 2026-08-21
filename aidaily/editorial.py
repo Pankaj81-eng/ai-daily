@@ -26,7 +26,14 @@ from .models import Story
 
 log = logging.getLogger(__name__)
 
-SCORE_THRESHOLD = 8.0
+# Lowered from 8.0 after a week of the genuinely-best story of the day
+# repeatedly landing at 7.2-7.8 and getting rejected - the pattern held even
+# after fixing the separate pool-visibility bug (top_candidates() used to
+# silently cap at 8 candidates; the LLM was judging correctly on what little
+# it could see). 7.5 still rejects the 1-6 range noise seen every day; it
+# just stops being all-or-nothing on stories the model itself calls
+# "genuinely significant" but that fall a fraction short of a very high bar.
+SCORE_THRESHOLD = 7.5
 
 SYSTEM = """You are the Editor-in-Chief of TechTales.
 
@@ -74,7 +81,7 @@ SCORING: score every candidate 1-10 on each of:
 - practical_usefulness
 - long_term_importance
 average = the mean of those five. A story is only eligible for publication
-if average >= 8. Only the single highest-scoring eligible story may be
+if average >= 7.5. Only the single highest-scoring eligible story may be
 published - never more than one.
 
 "WHY SHOULD I CARE" TEST: every eligible story must be completable as
@@ -98,7 +105,7 @@ its score, and say so in that candidate's reasoning.
 
 Score every candidate you are given, in the order given, even the ones you
 will reject - explain briefly why each one does or does not clear the bar.
-Then decide: if the top-scoring candidate is >= 8 average AND passes every
+Then decide: if the top-scoring candidate is >= 7.5 average AND passes every
 test above, that is what gets published. Otherwise publish nothing.
 
 Return ONLY valid JSON, no markdown fence, in exactly this shape:
