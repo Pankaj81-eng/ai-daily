@@ -372,7 +372,17 @@ def fit_panel(src: Path, dest: Path, width: int, height: int, cfg: dict,
                 # Bias upward for tall images: the subject is usually near the top.
                 bias = 0.35 if im.height > im.width else 0.5
                 top = int((bh - height) * bias)
-                left = (bw - width) // 2
+                # Bias left for wide images: this is exactly the shape of a
+                # blog's auto-generated share card (headline/badge text sits
+                # in a tight left margin, the right side is empty gradient/
+                # logo space) - a centred crop was clipping that left-margin
+                # text while barely touching the empty right side. Confirmed
+                # against a real AWS blog og:image (864x486 into a 1080x810
+                # panel): exactly 25% crop_loss, centred crop removed ~12.5%
+                # off each side, enough to cut the leading letter off every
+                # line of left-aligned text.
+                hbias = 0.15 if im.width > im.height else 0.5
+                left = int((bw - width) * hbias)
                 sharp = im.resize((bw, bh), Image.LANCZOS).crop(
                     (left, top, left + width, top + height)
                 )
