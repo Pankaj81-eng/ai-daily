@@ -30,15 +30,6 @@ the line) once it's actually fixed and committed.
 
 ## Content quality
 
-- **arXiv papers get misclassified as `model_release`** (the top editorial
-  priority) instead of `research`, because the category classifier picks
-  up keywords like "model" inside paper abstracts. This is why arXiv kept
-  winning story selection over working press feeds. Only stopped mattering
-  once the Anthropic key was funded (a real model can summarize arXiv
-  abstracts properly; the free fallback can't). Worth fixing the
-  classifier so arXiv is reliably tagged `research` regardless of its
-  abstract's wording.
-
 - **Model occasionally returns non-JSON** on some inputs (seen on a
   fixtures test run — `model returned non-JSON, falling back to extractive
   copy`). The built-in fallback caught it fine, so nothing broke, but
@@ -66,10 +57,6 @@ the line) once it's actually fixed and committed.
 
 ## Maintenance
 
-- **Dead RSS feeds** — these return 404/410 every run and need fixing or
-  removing from `config/sources.yaml`: Microsoft AI Blog, Anthropic News,
-  Mistral AI News, Meta AI Blog, Reuters Technology.
-
 - **GitHub Actions using deprecated Node 20** — `actions/checkout@v4`,
   `actions/setup-python@v5`, `actions/upload-artifact@v4` are being forced
   onto Node 24 with a deprecation warning. Not broken yet; bump to their
@@ -80,18 +67,22 @@ the line) once it's actually fixed and committed.
 - **Instagram long-lived token expires ~60 days from generation** (mid-to-
   late Sept 2026 based on when it was issued). Refresh before then or
   publishing starts failing.
-- **GH_TOKEN (fine-grained, `ai-daily-publish-v3`) expires 13 Nov 2026.**
-  Regenerate with the same Contents + Actions permissions before then.
+- **YouTube refresh token expires every ~7 days.** The Google Cloud OAuth
+  app (`ai-daily`) is in Testing status, not verified/published, and
+  Google auto-expires refresh tokens issued by unverified apps after 7
+  days regardless of anything else. Live and working as of 21 Aug 2026,
+  but expect `youtube_error` to start showing up in results.json again
+  about a week later unless re-authenticated. To refresh: rerun
+  `get_token.py` locally (regenerate it from SETUP.md §8 if it's been
+  deleted) and update the `YT_REFRESH_TOKEN` GitHub secret. Submitting the
+  app for Google's verification would make this permanent instead of
+  weekly - a real option if this becomes annoying, deliberately not done
+  yet (see chat history around 19-21 Aug 2026 for the trade-off
+  discussion).
 
 ## Pending — not started
 
-- **YouTube publishing isn't set up yet.** Only Instagram is live right
-  now. `publish_youtube.py` and the OAuth flow already exist in the repo
-  (see `SETUP.md` §8) but need onboarding: a Google Cloud project, OAuth
-  client, refresh token, and be aware new/unaudited projects get uploads
-  forced to `private` until Google approves an API compliance audit
-  (can take a few weeks). When ready to pick this up, that's the starting
-  point.
+- (none currently)
 
 ## Design / polish (low priority)
 
