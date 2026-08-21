@@ -4,10 +4,10 @@
 brand:
   name: "TechTales"                 # short form, used on slides
   full_name: "TechTales Engineering"
-  # Matches the positioning already used on both channels ("AI Engineering
-  # Made Simple" on Instagram, "AI Engineering, Explained" on the YouTube
-  # banner). Keeps the carousel consistent with the rest of the brand.
-  tagline: "AI ENGINEERING MADE SIMPLE"
+  # Matches the real Instagram bio and YouTube banner - both now say
+  # "AI Engineering, Explained". Keeps the carousel consistent with the
+  # rest of the brand.
+  tagline: "AI ENGINEERING, EXPLAINED"
   handle: "@techtalesengineering"
   youtube: "@TechTalesEngineering"
   # assets/logo.png is a vector reconstruction of the channel avatar. Replace
