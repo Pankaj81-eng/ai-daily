@@ -95,28 +95,40 @@ def build(
     if not candidates:
         raise NoNewsletterToday("Nothing new passed verification today.")
 
-    chosen = editorial.select_story(candidates, settings, PublishedLog().recent())
-    if chosen is None:
+    chosen = editorial.select_stories(candidates, settings, PublishedLog().recent())
+    if not chosen:
         raise NoNewsletterToday(
             "Editorial gate: no candidate cleared the bar today - "
             "publishing nothing rather than noise."
         )
-    selected = [chosen]
+    selected = chosen
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Images first: in "official" mode a story with no usable visual is not
     # publishable, and dropping it before the copywriting call saves tokens.
+    # A story dropped here for lacking an image does not take the rest of an
+    # otherwise-multi-story edition down with it - only an editorial pick
+    # that loses every one of its stories this way triggers NoNewsletterToday.
     if use_fixtures:
         _attach_sample_images(selected, settings, out_dir)
     else:
         images.attach_images(selected, settings, out_dir)
+    dropped = len(selected)
     selected = images.drop_imageless(selected, settings)
+    dropped -= len(selected)
     if not selected:
+        headlines = ", ".join(s.headline or s.title for s in chosen)
         raise NoNewsletterToday(
-            f"Today's chosen story ({chosen.headline or chosen.title}) had no "
-            "usable image. Not posting - not falling back to a lower-quality "
-            "candidate, since that would undercut the editorial pick."
+            f"Today's editorial pick ({headlines}) had no usable image. Not "
+            "posting - not falling back to a lower-quality candidate, since "
+            "that would undercut the editorial pick."
+        )
+    if dropped:
+        log.warning(
+            "%d of %d editorially-picked stories had no usable image and "
+            "were dropped; publishing the remaining %d",
+            dropped, len(chosen), len(selected),
         )
 
     edition = summarize.summarize(selected, settings, date)

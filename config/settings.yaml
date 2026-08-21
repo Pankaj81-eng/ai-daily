@@ -194,8 +194,17 @@ images:
 summarize:
   model: "claude-sonnet-4-6"
   max_headline_words: 8
+  # max_bullets is a leftover from the old 3-bullet-per-story format - no
+  # longer read anywhere (the compact story-slide format is always exactly
+  # one "what happened" + one "why it matters" sentence, hardcoded in
+  # summarize.py, not driven by this setting). Kept only for make_edition.py
+  # if that old tool is ever resurrected.
   max_bullets: 3
-  max_bullet_chars: 88
+  # Was 88 (right for 3 short bullets crammed onto one image-led slide).
+  # The compact story slide gives each sentence a full card to itself, so 88
+  # was truncating mid-sentence ("...previewed Private...") while leaving
+  # most of the slide empty. Raised to fit a real complete sentence.
+  max_bullet_chars: 160
   script_target_words: 110
 
 carousel:

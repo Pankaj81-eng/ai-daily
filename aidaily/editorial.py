@@ -54,9 +54,12 @@ who follow for the broader story rather than the technical detail.
 Our reputation depends on filtering information, not producing content.
 Publishing nothing is better than publishing noise.
 
-MISSION: find the single most important AI story of the day from the
-candidates given to you. Do not rank them into a newsletter. Do not treat
-"we were given candidates" as a reason one of them must be published.
+MISSION: select the AI stories from today that are genuinely worth this
+audience's time - zero, one, two, or three of them, never more. This is not
+"pick the best N to fill a newsletter" - a story only makes the list if it
+independently clears the bar on its own. A quiet day with zero qualifying
+stories is a correct, expected outcome, not a failure. Do not treat "we
+were given candidates" as a reason any of them must be published.
 
 STORY SELECTION RULES
 
@@ -103,8 +106,12 @@ SCORING: score every candidate 1-10 on each of:
 - practical_usefulness
 - long_term_importance
 average = the mean of those five. A story is only eligible for publication
-if average >= 7.5. Only the single highest-scoring eligible story may be
-published - never more than one.
+if average >= 7.5. Every story that clears 7.5 AND passes every test below
+is eligible - publish every eligible story, ranked highest-scoring first,
+capped at 3. If more than 3 clear the bar, publish only the top 3. This is
+not "always publish 3" - most days will have 0 or 1 eligible stories; 3 in
+one day should be rare, only when the day genuinely produced that much
+signal.
 
 "WHY SHOULD I CARE" TEST: every eligible story must be completable as
 "Our audience should care because ...". The completion can be a technical
@@ -132,8 +139,10 @@ its score, and say so in that candidate's reasoning.
 
 Score every candidate you are given, in the order given, even the ones you
 will reject - explain briefly why each one does or does not clear the bar.
-Then decide: if the top-scoring candidate is >= 7.5 average AND passes every
-test above, that is what gets published. Otherwise publish nothing.
+Then decide: every candidate scoring >= 7.5 average AND passing every test
+above is eligible. Publish every eligible story, most important first,
+capped at 3 - if none are eligible, publish nothing; that is a normal
+outcome, not a failure to avoid.
 
 Return ONLY valid JSON, no markdown fence, in exactly this shape:
 {
@@ -146,8 +155,8 @@ Return ONLY valid JSON, no markdown fence, in exactly this shape:
      "audience_should_care_because": "one sentence completing that test, or empty string if it cannot be completed",
      "reasoning": "one short sentence on why this does or does not clear the bar"}
   ],
-  "publish_index": <the index of the single story to publish, or null if none clear the bar>,
-  "decision_reason": "one sentence explaining the final call"
+  "publish_indices": [<indices of the stories to publish, most important first, 0-3 entries, empty list if none clear the bar>],
+  "decision_reason": "one sentence explaining the final call - why these (or none), and why not more/fewer"
 }
 The "scores" array must have exactly one entry per candidate given, in the
 same order, indices starting at 0."""
@@ -176,19 +185,27 @@ def _recent_block(recent_published: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def select_story(
-    candidates: list[Story], settings: dict, recent_published: list[dict] | None = None,
-) -> Story | None:
-    """The single story worth publishing today, or None.
+# Never more than this many stories in one edition, even on a genuinely
+# strong day - see MISSION and the SCORING rule above. Most days should
+# return 0 or 1, not the cap.
+MAX_STORIES = 3
 
-    None is a normal, frequent, correct result - it means "no newsletter
-    today", not that anything went wrong. `recent_published` (from
-    aidaily.state.PublishedLog) lets the model recognise a same-theme rehash
-    even when the specific article/URL is new - see the ALREADY COVERED rule
-    in SYSTEM.
+
+def select_stories(
+    candidates: list[Story], settings: dict, recent_published: list[dict] | None = None,
+) -> list[Story]:
+    """The stories worth publishing today, ranked most important first.
+
+    An empty list is a normal, frequent, correct result - it means "no
+    newsletter today", not that anything went wrong. Capped at MAX_STORIES;
+    each returned story independently cleared SCORE_THRESHOLD on its own -
+    this is "publish everything that earned it, capped at 3", never "always
+    fill 3 slots". `recent_published` (from aidaily.state.PublishedLog) lets
+    the model recognise a same-theme rehash even when the specific
+    article/URL is new - see the ALREADY COVERED rule in SYSTEM.
     """
     if not candidates:
-        return None
+        return []
 
     api_key = env("ANTHROPIC_API_KEY")
     if not api_key:
@@ -206,8 +223,8 @@ def select_story(
         )
         top = candidates[0]
         if top.best_tier == 1 or top.corroboration >= 2:
-            return top
-        return None
+            return [top]
+        return []
 
     import anthropic
 
@@ -230,42 +247,46 @@ def select_story(
             "editorial gate returned non-JSON (stop_reason=%s) - publishing "
             "nothing rather than guessing", resp.stop_reason,
         )
-        return None
+        return []
 
+    scores_by_index: dict[int, dict] = {}
     for s in data.get("scores", []):
         log.info(
             "candidate %s: avg=%s  %s",
             s.get("index"), s.get("average"), s.get("reasoning", ""),
         )
+        scores_by_index[s.get("index")] = s
 
-    idx = data.get("publish_index")
+    indices = data.get("publish_indices") or []
     reason = data.get("decision_reason", "")
-    if idx is None:
+    if not indices:
         log.info("editorial gate: NO NEWSLETTER TODAY - %s", reason)
-        return None
+        return []
 
-    try:
-        chosen_score = next(
-            s for s in data.get("scores", []) if s.get("index") == idx
+    chosen: list[Story] = []
+    for idx in indices[:MAX_STORIES]:
+        if not (isinstance(idx, int) and 0 <= idx < len(candidates)):
+            log.error("editorial gate returned out-of-range index %r - skipping it", idx)
+            continue
+        average = scores_by_index.get(idx, {}).get("average", 0)
+        if average < SCORE_THRESHOLD:
+            log.warning(
+                "editorial gate picked index %s at average %.1f, below the "
+                "%.1f threshold - skipping it rather than trusting a score "
+                "under the bar", idx, average, SCORE_THRESHOLD,
+            )
+            continue
+        chosen.append(candidates[idx])
+        log.info("editorial gate: publishing candidate %d (avg %.1f)", idx, average)
+
+    if not chosen:
+        log.info(
+            "editorial gate: NO NEWSLETTER TODAY - every picked index failed "
+            "validation (out of range or below threshold)"
         )
-    except StopIteration:
-        chosen_score = {}
-
-    average = chosen_score.get("average", 0)
-    if average < SCORE_THRESHOLD:
-        log.warning(
-            "editorial gate picked index %s at average %.1f, below the %.1f "
-            "threshold - treating as no newsletter rather than trusting a "
-            "score under the bar", idx, average, SCORE_THRESHOLD,
+    else:
+        log.info(
+            "editorial gate: publishing %d stor%s - %s",
+            len(chosen), "y" if len(chosen) == 1 else "ies", reason,
         )
-        return None
-
-    if not (0 <= idx < len(candidates)):
-        log.error("editorial gate returned out-of-range index %s - publishing nothing", idx)
-        return None
-
-    log.info(
-        "editorial gate: publishing candidate %d (avg %.1f) - %s",
-        idx, average, reason,
-    )
-    return candidates[idx]
+    return chosen

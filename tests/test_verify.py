@@ -437,28 +437,36 @@ from aidaily.summarize import _fallback_why         # noqa: E402
 
 
 def test_the_published_story_gets_a_why_it_matters_without_a_model():
-    """summarize() now writes up a single story (the editorial gate's pick),
-    not a fixed-size list - confirm the fallback path still fills why_it_matters
-    for that one story when no API key is configured."""
+    """summarize() writes up every story the editorial gate chose (1-3 of
+    them) - confirm the fallback path fills why_it_matters for a single
+    story when no API key is configured."""
     from aidaily.summarize import summarize
     stories = verify.select(_run(fixture_items()), SETTINGS,
-                            type("S", (), {"has": lambda self, u: False})())
+                            type("S", (), {"has": lambda self, u: False})())[:1]
     edition = summarize(stories, SETTINGS, "2026-08-14")
     assert len(edition.stories) == 1
     assert edition.stories[0].why_it_matters
 
 
-def test_summarize_with_multiple_stories_uses_only_the_first():
-    """Defensive: summarize() should only ever be called with one story (the
-    editorial gate's pick), but if a caller passes more, it must not silently
-    drop data for the wrong story - it writes up stories[0] and ignores the rest."""
+def test_summarize_writes_up_every_story_given():
+    """Phase 2: summarize() now writes up every story the editorial gate
+    selected (up to 3), not just the first - each gets its own headline,
+    one "what happened" bullet, and one "why it matters" bullet."""
     from aidaily.summarize import summarize
     stories = verify.select(_run(fixture_items()), SETTINGS,
                             type("S", (), {"has": lambda self, u: False})())
     assert len(stories) > 1, "fixture needs 2+ passing stories for this test to mean anything"
+    original_links = [s.link for s in stories]
     edition = summarize(stories, SETTINGS, "2026-08-14")
-    assert len(edition.stories) == 1
-    assert edition.stories[0].headline == stories[0].headline
+    assert len(edition.stories) == len(stories)
+    for s in edition.stories:
+        assert s.headline
+        assert len(s.bullets) == 1, "compact format: exactly one what-happened bullet"
+        assert len(s.why_bullets) == 1, "compact format: exactly one why-it-matters bullet"
+        assert s.take == "", "TechTales Take is dropped entirely from the compact format"
+    # summarize() must preserve input order - a caller zips stories/data by
+    # position, so a silent reorder would mismatch copy onto the wrong story.
+    assert [s.link for s in edition.stories] == original_links
 
 
 def test_same_category_stories_get_different_takeaways():
@@ -544,3 +552,52 @@ def test_editorial_recent_block_empty_is_explicit_not_blank():
 
     block = _recent_block([])
     assert "nothing" in block.lower()
+
+
+# --------------------------------------------------------------------------
+# Phase 2: multi-story (0-3) editorial selection + adaptive slide count
+# --------------------------------------------------------------------------
+
+def test_select_stories_offline_fallback_returns_a_list(monkeypatch):
+    """No API key: the conservative offline fallback must return a list
+    (possibly empty), never a bare Story or None - callers now always
+    expect list-shaped output from select_stories(). Forces the no-key path
+    via monkeypatch rather than assuming the ambient environment has none -
+    a real ANTHROPIC_API_KEY is routinely exported in dev shells here."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    from aidaily.editorial import select_stories
+
+    strong = Story(items=[_item("Tier-1 launch", "OpenAI Blog", 1)])
+    strong.best_tier = 1
+    weak = Story(items=[_item("Unverified blip", "Random Blog", 3)])
+    weak.best_tier = 3
+    weak.corroboration = 1
+
+    assert select_stories([strong], SETTINGS) == [strong]
+    assert select_stories([weak], SETTINGS) == []
+    assert select_stories([], SETTINGS) == []
+
+
+def test_slide_count_scales_with_story_count():
+    """1 cover/headline + 1 per story + 1 follow = N+2, for N in 1..3 -
+    the exact formula agreed for the compact multi-story layout."""
+    from aidaily.render_carousel import _slide_specs
+
+    def _story(headline, category="product_launch"):
+        s = Story(items=[_item(headline, "TechCrunch AI", 2)])
+        s.headline, s.teaser, s.category = headline, headline[:20], category
+        s.bullets, s.why_bullets = ["What happened."], ["Why it matters."]
+        return s
+
+    for n in (1, 2, 3):
+        stories = [_story(f"Story {i}") for i in range(n)]
+        edition = Edition(date="2026-08-21", stories=stories)
+        specs = _slide_specs(edition, SETTINGS)
+        assert len(specs) == n + 2, f"expected {n + 2} slides for {n} stories, got {len(specs)}"
+        assert specs[-1]["kind"] == "follow"
+        assert [s["kind"] for s in specs].count("story") == n
+        if n == 1:
+            assert specs[0]["kind"] == "headline"
+        else:
+            assert specs[0]["kind"] == "cover"
+            assert len(specs[0]["teasers"]) == n

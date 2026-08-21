@@ -1,18 +1,21 @@
-"""Stage 4a - render the four-slide Instagram carousel.
+"""Stage 4a - render the Instagram carousel.
 
 Slides are laid out as HTML and screenshotted with headless Chromium, which
 gives real typography, gradients and image compositing without fighting an
 imaging library.
 
-One story a day now, not three (see aidaily.editorial) - so the carousel is a
-fixed four slides, not a variable cover+N+matters+follow deck:
-  1  headline    image-led, the headline, source
-  2  what        what happened - up to three bullets, no image (more room)
-  3  why         why engineers should care - up to three bullets
-  4  take        the TechTales Take + follow CTA folded into the footer
+Up to 3 stories a day now (see aidaily.editorial), each independently
+cleared the bar - so the deck is a fixed 1-cover + N-story + 1-follow shape,
+never more than 5 slides even at the 3-story cap:
+  1 story:  headline (image-led) -> story (what/why, one line each) -> follow
+  2-3:      cover (teases each story) -> one story slide each -> follow
+
+Every "story" slide is deliberately compact: one sentence for what happened,
+one for why it matters, no "TechTales Take" - that only existed in the old
+fixed 4-slide single-story format and does not fit this leaner shape.
 
 Instagram crops every slide in a carousel to the aspect ratio of the FIRST
-slide, so all four are rendered on an identical 1080x1350 canvas.
+slide, so all slides are rendered on an identical 1080x1350 canvas.
 """
 
 from __future__ import annotations
@@ -26,7 +29,7 @@ from PIL import Image
 
 from .config import ROOT
 from .images import detect_company
-from .models import Edition
+from .models import Edition, Story
 
 log = logging.getLogger(__name__)
 
@@ -102,23 +105,11 @@ def _headline_size(text: str) -> int:
     return 48
 
 
-def _bullet_size(bullets: list[str]) -> int:
-    total = sum(len(b) for b in bullets)
-    if total <= 130:
-        return 32
-    if total <= 200:
-        return 29
-    return 26
-
-
-def _why_size(text: str) -> int:
-    return 30 if len(text) <= 78 else 27
-
-
 def _card_size(bullets: list[str]) -> int:
-    """Type size for the text-only 'what'/'why' slides - these have the
-    whole slide to themselves (no image eating half the canvas), so they can
-    run noticeably bigger than the image-led headline slide's bullets."""
+    """Type size for the text-only 'story' slide's what/why cards - these
+    have the whole slide to themselves (no image eating half the canvas),
+    so they can run noticeably bigger than the image-led headline slide's
+    copy."""
     total = sum(len(b) for b in bullets)
     if total <= 90:
         return 42
@@ -129,23 +120,16 @@ def _card_size(bullets: list[str]) -> int:
     return 27
 
 
-def _take_size(text: str) -> int:
-    if len(text) <= 110:
-        return 46
-    if len(text) <= 180:
-        return 40
-    return 34
-
-
 # Shrinks a slide's copy until it fits its fixed area. Each slide kind has
 # its own box/inner pair (.copy/.copy-inner for the headline slide,
-# .wim/.wim-inner for what/why, .take-wrap/.take-inner for the take slide) -
-# try each rather than hard-coding one, since which pair exists depends on
-# which slide is on screen.
+# .wim/.wim-inner for the story slide, .cover-body/.cover-inner for the
+# multi-story cover) - try each rather than hard-coding one, since which
+# pair exists depends on which slide is on screen. The follow slide has no
+# pair here - its copy is fixed, known-short text, not model-generated.
 _AUTOFIT_JS = """
 () => {
   const pairs = [['.copy', '.copy-inner'], ['.wim', '.wim-inner'],
-                 ['.take-wrap', '.take-inner']];
+                 ['.cover-body', '.cover-inner']];
   let box = null, inner = null;
   for (const [b, i] of pairs) {
     const bEl = document.querySelector(b), iEl = document.querySelector(i);
@@ -165,32 +149,33 @@ _AUTOFIT_JS = """
 """
 
 
+def _subject_for(story: Story, category_label: str) -> str:
+    """The company the story is ABOUT, never the outlet or repository that
+    reported it - a research-repository feed like arXiv (which has no
+    per-article identity of its own) must never end up rendered as if it
+    were the subject. story.company is only populated here if the image
+    stage already detected one (it skips detection once an official image
+    is found, so this re-runs it rather than trusting story.company is
+    reliably set); if no company can be identified at all, fall back to the
+    editorial category - never to the source name.
+    """
+    return story.company or (detect_company(story) or (None, None))[0] or category_label
+
+
 def _slide_specs(edition: Edition, settings: dict) -> list[dict]:
+    """Build one spec dict per slide: 1 cover/headline + 1 per story + 1
+    follow. Slide count adapts to story count (always 1-3, enforced by
+    aidaily.editorial): 3 slides for 1 story, 4 for 2, 5 for 3. Never more
+    than 5 - Instagram's 10-slide carousel cap is nowhere close to binding
+    at this size, but the point is to stay short regardless.
+    """
     brand = settings["brand"]
     ccfg = settings["carousel"]
-    total = 4
-
-    if len(edition.stories) != 1:
-        log.warning(
-            "edition has %d stories, but the carousel is now a fixed 4-slide "
-            "single-story deck - using the first and ignoring the rest",
-            len(edition.stories),
-        )
-    story = edition.stories[0]
+    stories = edition.stories
+    n = len(stories)
+    total = n + 2
 
     date_label = datetime.strptime(edition.date, "%Y-%m-%d").strftime("%d %b %Y")
-    category_label = CATEGORY_LABELS.get(story.category, "AI news")
-
-    # The generated panel and slide footers name the company the story is
-    # ABOUT, never the outlet or repository that reported it - "subject" and
-    # "source" must never be interchangeable, or a research-repository feed
-    # like arXiv (which has no per-article identity of its own) ends up
-    # rendered as if it were the headline. story.company is only populated
-    # here if the image stage already detected one (it skips detection once
-    # an official image is found, so this re-runs it rather than trusting
-    # that story.company is reliably set); if no company can be identified at
-    # all, fall back to the editorial category - never to the source name.
-    subject = story.company or (detect_company(story) or (None, None))[0] or category_label
 
     common = {
         "w": ccfg["width"],
@@ -204,44 +189,60 @@ def _slide_specs(edition: Edition, settings: dict) -> list[dict]:
         "date_label": date_label,
         "logo_uri": _logo_uri(brand.get("logo")),
         "pages": total,
-        "source": story.source_label,
-        "subject": subject,
-        "category_label": category_label,
     }
 
-    return [
-        {
+    specs: list[dict] = []
+    page = 1
+
+    if n == 1:
+        # Single story: slide 1 is the familiar image-led headline slide,
+        # unchanged from the one-story format.
+        story = stories[0]
+        category_label = CATEGORY_LABELS.get(story.category, "AI news")
+        specs.append({
             **common,
             "kind": "headline",
             "title": story.headline,
             "image_uri": _uri(story.image_path),
             "headline_size": _headline_size(story.headline),
-            "page": 1,
-        },
-        {
+            "source": story.source_label,
+            "subject": _subject_for(story, category_label),
+            "category_label": category_label,
+            "page": page,
+        })
+        page += 1
+    else:
+        # Multiple stories: slide 1 is a text-only cover teasing each one -
+        # no single image represents N stories, so this doesn't try.
+        specs.append({
             **common,
-            "kind": "what",
-            "card_title": "What happened",
-            "bullets": story.bullets,
-            "card_size": _card_size(story.bullets),
-            "page": 2,
-        },
-        {
+            "kind": "cover",
+            "teasers": [s.teaser or s.headline for s in stories],
+            "page": page,
+        })
+        page += 1
+
+    for story_idx, story in enumerate(stories):
+        category_label = CATEGORY_LABELS.get(story.category, "AI news")
+        what = story.bullets[0] if story.bullets else ""
+        why = story.why_bullets[0] if story.why_bullets else ""
+        specs.append({
             **common,
-            "kind": "why",
-            "card_title": "Why engineers should care",
-            "bullets": story.why_bullets,
-            "card_size": _card_size(story.why_bullets),
-            "page": 3,
-        },
-        {
-            **common,
-            "kind": "take",
-            "take": story.take,
-            "take_size": _take_size(story.take),
-            "page": 4,
-        },
-    ]
+            "kind": "story",
+            "story_headline": story.headline,
+            "what": what,
+            "why": why,
+            "story_size": _card_size([what, why]),
+            "source": story.source_label,
+            "subject": _subject_for(story, category_label),
+            "story_label": f"Story {story_idx + 1} of {n}" if n > 1 else None,
+            "page": page,
+        })
+        page += 1
+
+    specs.append({**common, "kind": "follow", "page": page})
+
+    return specs
 
 
 def render(edition: Edition, settings: dict, out_dir: Path) -> list[Path]:

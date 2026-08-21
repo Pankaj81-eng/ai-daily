@@ -270,8 +270,9 @@ def render_slideshow(
     """Produce out_dir/slideshow.mp4 from the already-rendered carousel slides.
 
     The default video style (settings.video.style == "slideshow"): the exact
-    same 4 images already published to Instagram, held static with a gentle
-    zoom for a touch of motion, no spoken narration at all. Optionally mixes
+    same images already published to Instagram (3-5 of them, depending on
+    how many stories cleared the editorial bar today), held static with a
+    gentle zoom for a touch of motion, no spoken narration at all. Optionally mixes
     in a background music track (settings.video.music, looped/trimmed to fit
     with a fade-out); produces a silent video otherwise - silence is not an
     error state here, it is a fully valid result on its own.
