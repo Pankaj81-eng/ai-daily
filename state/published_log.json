@@ -12,5 +12,12 @@
 "headline": "OpenAI offers zero data retention for API customers",
 "company": "",
 "category": "tool_release"
+},
+{
+"ts": 1787386752.939103,
+"date": "2026-08-22",
+"headline": "Mistral releases agentic search retrieval layer",
+"company": "",
+"category": "research"
 }
 ]
