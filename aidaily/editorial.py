@@ -34,15 +34,21 @@ log = logging.getLogger(__name__)
 
 # Lowered from 8.0 to 7.5 in mid-Aug 2026 after the genuinely-best story of
 # the day repeatedly landing at 7.2-7.8 and getting rejected. Lowered again,
-# 7.5 -> 7.0, on 22 Aug 2026: even after fixing the RSS-thinness gap
-# (enrich.py), Mistral's Agentic Search launch - a major EU lab, called
-# "genuinely useful... genuinely significant" by the model's own reasoning -
-# still landed at 7.4 and got rejected. Same near-miss pattern as the 8.0->
-# 7.5 move, one rung down. 7.0 still rejects the 1-6 range noise seen every
-# day (tutorials, single-vendor how-tos, niche research); it stops being
-# all-or-nothing on stories the model itself calls genuinely significant but
-# that miss a very high bar by a few tenths.
-SCORE_THRESHOLD = 7.0
+# 7.5 -> 7.0, on 22 Aug 2026 morning, after Mistral's Agentic Search launch -
+# a major EU lab, called "genuinely useful... genuinely significant" by the
+# model's own reasoning - still landed at 7.4 and got rejected even with
+# enrich.py's real article text.
+#
+# Lowered again same day, 7.0 -> 6.0, at Pankaj's explicit request, WITHOUT
+# new evidence of a 6-7 range near-miss - unlike every move above, this one
+# is not backed by an observed pattern, just a preference for a higher
+# publish frequency. Flagged at the time: the 5-7 range that day was mostly
+# single-vendor AWS how-to posts and minor features the model itself called
+# "one of many AWS blog posts" / "too incremental" - this move risks letting
+# that tier through. If posts start feeling thin/promotional rather than
+# signal, this is the first place to look; raising it back is a one-line
+# change, not a rebuild.
+SCORE_THRESHOLD = 6.0
 
 # The threshold used to be hardcoded as literal "7.5" text in two places
 # below (the SCORING and final-decision paragraphs), which meant a
