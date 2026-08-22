@@ -32,15 +32,27 @@ from .models import Story
 
 log = logging.getLogger(__name__)
 
-# Lowered from 8.0 after a week of the genuinely-best story of the day
-# repeatedly landing at 7.2-7.8 and getting rejected - the pattern held even
-# after fixing the separate pool-visibility bug (top_candidates() used to
-# silently cap at 8 candidates; the LLM was judging correctly on what little
-# it could see). 7.5 still rejects the 1-6 range noise seen every day; it
-# just stops being all-or-nothing on stories the model itself calls
-# "genuinely significant" but that fall a fraction short of a very high bar.
-SCORE_THRESHOLD = 7.5
+# Lowered from 8.0 to 7.5 in mid-Aug 2026 after the genuinely-best story of
+# the day repeatedly landing at 7.2-7.8 and getting rejected. Lowered again,
+# 7.5 -> 7.0, on 22 Aug 2026: even after fixing the RSS-thinness gap
+# (enrich.py), Mistral's Agentic Search launch - a major EU lab, called
+# "genuinely useful... genuinely significant" by the model's own reasoning -
+# still landed at 7.4 and got rejected. Same near-miss pattern as the 8.0->
+# 7.5 move, one rung down. 7.0 still rejects the 1-6 range noise seen every
+# day (tutorials, single-vendor how-tos, niche research); it stops being
+# all-or-nothing on stories the model itself calls genuinely significant but
+# that miss a very high bar by a few tenths.
+SCORE_THRESHOLD = 7.0
 
+# The threshold used to be hardcoded as literal "7.5" text in two places
+# below (the SCORING and final-decision paragraphs), which meant a
+# threshold change here silently stopped matching what the model was
+# actually told the bar was - caught 22 Aug 2026 when SCORE_THRESHOLD moved
+# to 7.0 but the prompt still said 7.5 twice. Fixed by writing a
+# __SCORE_THRESHOLD__ sentinel below and substituting it after the string
+# literal (see the str.replace() right after this string) rather than an
+# f-string/.format(), since the JSON schema block further down has literal
+# {braces} that would need escaping for either of those.
 SYSTEM = """You are the Editor-in-Chief of TechTales.
 
 TechTales is NOT an AI news channel. TechTales is an AI Engineering Signal
@@ -107,7 +119,7 @@ SCORING: score every candidate 1-10 on each of:
 - practical_usefulness
 - long_term_importance
 average = the mean of those five. A story is only eligible for publication
-if average >= 7.5. Every story that clears 7.5 AND passes every test below
+if average >= __SCORE_THRESHOLD__. Every story that clears __SCORE_THRESHOLD__ AND passes every test below
 is eligible - publish every eligible story, ranked highest-scoring first,
 capped at 3. If more than 3 clear the bar, publish only the top 3. This is
 not "always publish 3" - most days will have 0 or 1 eligible stories; 3 in
@@ -140,7 +152,7 @@ its score, and say so in that candidate's reasoning.
 
 Score every candidate you are given, in the order given, even the ones you
 will reject - explain briefly why each one does or does not clear the bar.
-Then decide: every candidate scoring >= 7.5 average AND passing every test
+Then decide: every candidate scoring >= __SCORE_THRESHOLD__ average AND passing every test
 above is eligible. Publish every eligible story, most important first,
 capped at 3 - if none are eligible, publish nothing; that is a normal
 outcome, not a failure to avoid.
@@ -161,6 +173,8 @@ Return ONLY valid JSON, no markdown fence, in exactly this shape:
 }
 The "scores" array must have exactly one entry per candidate given, in the
 same order, indices starting at 0."""
+
+SYSTEM = SYSTEM.replace("__SCORE_THRESHOLD__", str(SCORE_THRESHOLD))
 
 
 def _candidate_block(idx: int, story: Story, enriched_text: str | None = None) -> str:
