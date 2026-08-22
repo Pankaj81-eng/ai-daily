@@ -27,6 +27,7 @@ import logging
 import re
 
 from .config import env
+from .enrich import enrich_thin_candidates
 from .models import Story
 
 log = logging.getLogger(__name__)
@@ -162,7 +163,13 @@ The "scores" array must have exactly one entry per candidate given, in the
 same order, indices starting at 0."""
 
 
-def _candidate_block(idx: int, story: Story) -> str:
+def _candidate_block(idx: int, story: Story, enriched_text: str | None = None) -> str:
+    if enriched_text:
+        source_text = enriched_text
+        source_note = " (fetched from the article - the RSS summary was too thin to score)"
+    else:
+        source_text = story.lead.summary or "(none provided by feed)"
+        source_note = ""
     return (
         f"--- CANDIDATE {idx} ---\n"
         f"Category: {story.category}\n"
@@ -171,7 +178,7 @@ def _candidate_block(idx: int, story: Story) -> str:
         f"Independent sources corroborating it: {story.corroboration}\n"
         f"URL: {story.link}\n"
         f"Headline as published: {story.title}\n"
-        f"Source text: {story.lead.summary or '(none provided by feed)'}\n"
+        f"Source text{source_note}: {source_text}\n"
     )
 
 
@@ -228,10 +235,19 @@ def select_stories(
 
     import anthropic
 
+    # Thin RSS summaries (a tagline, no facts) can make a genuinely
+    # significant story unscoreable - see enrich.py's module docstring for
+    # the real case (Mistral, 22 Aug 2026) that motivated this. Only the
+    # candidates that actually need it get a live fetch; everyone else is
+    # scored on their original summary exactly as before.
+    enriched = enrich_thin_candidates(candidates, settings)
+
     user = (
         _recent_block(recent_published or [])
         + "\n"
-        + "\n".join(_candidate_block(i, s) for i, s in enumerate(candidates))
+        + "\n".join(
+            _candidate_block(i, s, enriched.get(i)) for i, s in enumerate(candidates)
+        )
     )
     client = anthropic.Anthropic(api_key=api_key)
     resp = client.messages.create(

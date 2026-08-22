@@ -601,3 +601,59 @@ def test_slide_count_scales_with_story_count():
         else:
             assert specs[0]["kind"] == "cover"
             assert len(specs[0]["teasers"]) == n
+
+
+# --------------------------------------------------------------------------
+# Enrichment: fetch real article text for candidates whose RSS summary is
+# too thin to score confidently (found via the Mistral "Agentic Search"
+# case, 22 Aug 2026 - a 119-char marketing tagline with zero facts).
+# --------------------------------------------------------------------------
+
+def test_enrich_only_fetches_thin_summaries(monkeypatch):
+    from aidaily import enrich
+
+    calls = []
+
+    def fake_fetch(url, timeout_s):
+        calls.append(url)
+        return "a" * 500  # pretend the article page had plenty of text
+
+    monkeypatch.setattr(enrich, "fetch_article_excerpt", fake_fetch)
+
+    thin = Story(items=[_item("Thin story", "Mistral", 1)])
+    thin.items[0].summary = "The retrieval layer that helps AI systems navigate."
+    rich = Story(items=[_item("Rich story", "OpenAI Blog", 1)])
+    rich.items[0].summary = "x" * 400  # already well above THIN_SUMMARY_CHARS
+
+    result = enrich.enrich_thin_candidates([thin, rich], SETTINGS)
+
+    assert calls == [thin.link]          # only the thin one triggered a fetch
+    assert 0 in result and 1 not in result
+    assert result[0] == "a" * 500
+
+
+def test_enrich_falls_back_to_original_summary_on_fetch_failure(monkeypatch):
+    from aidaily import enrich
+
+    monkeypatch.setattr(enrich, "fetch_article_excerpt", lambda url, timeout_s: None)
+
+    thin = Story(items=[_item("Thin story", "Mistral", 1)])
+    thin.items[0].summary = "Too short."
+
+    result = enrich.enrich_thin_candidates([thin], SETTINGS)
+    assert result == {}   # no entry - _candidate_block falls back to the RSS summary
+
+
+def test_candidate_block_flags_enriched_text_to_the_model():
+    from aidaily.editorial import _candidate_block
+
+    story = Story(items=[_item("Agentic Search launches", "Mistral", 1)])
+    story.items[0].summary = "Too short."
+
+    block = _candidate_block(0, story, enriched_text="Real facts from the article body.")
+    assert "Real facts from the article body." in block
+    assert "RSS summary was too thin" in block
+
+    block_plain = _candidate_block(0, story, enriched_text=None)
+    assert "Too short." in block_plain
+    assert "RSS summary was too thin" not in block_plain
